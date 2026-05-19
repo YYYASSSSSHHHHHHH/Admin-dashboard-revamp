@@ -153,6 +153,7 @@ export function AssignPlanTab({
   const [bankRef, setBankRef] = useState('');
   const [bankAmount, setBankAmount] = useState(plan.price.toString());
   const [bankRemark, setBankRemark] = useState('');
+  const [markPaid, setMarkPaid] = useState(false);
 
   const openDialog = () => {
     setAction('assign');
@@ -172,6 +173,7 @@ export function AssignPlanTab({
     setBankRef('');
     setBankAmount(plan.price.toString());
     setBankRemark('');
+    setMarkPaid(false);
     setOpen(true);
   };
 
@@ -259,7 +261,8 @@ export function AssignPlanTab({
 
     if (invoiceApplicable && invoiceChoice !== 'none') {
       const isFinal = invoiceChoice === 'final';
-      if (isFinal) {
+      const shouldRecordPayment = isFinal && markPaid;
+      if (shouldRecordPayment) {
         if (!bankName.trim() || !bankRef.trim() || !bankAmount.trim()) {
           toast.error('Please fill all bank details');
           return;
@@ -267,18 +270,18 @@ export function AssignPlanTab({
       }
       const prefix = isFinal ? 'INV' : 'PRO';
       const invoiceId = `${prefix}-${Math.floor(Math.random() * 9000) + 3000}`;
-      const amount = isFinal ? parseFloat(bankAmount) || newPlan.price : newPlan.price;
+      const amount = shouldRecordPayment ? parseFloat(bankAmount) || newPlan.price : newPlan.price;
       newInvoice = {
         id: invoiceId,
         amount,
         type: isFinal ? 'final' : 'proforma',
-        status: isFinal ? 'paid' : 'draft',
+        status: isFinal ? (shouldRecordPayment ? 'paid' : 'pending') : 'draft',
         issuedAt: nowIso,
         dueDate: addDaysIso(nowIso, 14),
-        bankName: isFinal ? bankName : undefined,
-        bankRef: isFinal ? bankRef : undefined,
-        bankRemark: isFinal ? bankRemark : undefined,
-        paidOn: isFinal ? bankDate.toISOString() : undefined,
+        bankName: shouldRecordPayment ? bankName : undefined,
+        bankRef: shouldRecordPayment ? bankRef : undefined,
+        bankRemark: shouldRecordPayment ? bankRemark : undefined,
+        paidOn: shouldRecordPayment ? bankDate.toISOString() : undefined,
       };
       events.push({
         id: Date.now() + 1,
@@ -288,7 +291,7 @@ export function AssignPlanTab({
         at: nowIso,
         actor: 'Olivia Chen',
       });
-      if (isFinal) {
+      if (shouldRecordPayment) {
         events.push({
           id: Date.now() + 2,
           type: 'payment_received',
@@ -346,41 +349,32 @@ export function AssignPlanTab({
 
   return (
     <div className="space-y-5" data-testid="assign-plan-tab">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="font-display text-xl font-semibold tracking-tight text-slate-900">
-            Manage Plan & Billing
-          </h2>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Apply plan actions and generate invoices for this member.
-          </p>
-        </div>
-        <Button
-          data-testid="assign-action-btn"
-          onClick={openDialog}
-          className="h-11 px-5 bg-slate-900 hover:bg-slate-800 text-white"
-        >
-          <Settings2 className="h-4 w-4 mr-2" />
-          Manage Plan
-        </Button>
-      </div>
-
       <div className="bg-white border border-slate-200/80 rounded-xl shadow-sm">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h2 className="font-display text-lg font-semibold text-slate-900 tracking-tight">
-              Activity & Invoices
+            <h2 className="font-display text-xl font-semibold text-slate-900 tracking-tight">
+              Assign Plan
             </h2>
             <p className="text-sm text-slate-500 mt-0.5">
-              Combined log of plan events and billing.
+              Apply plan actions and generate invoices for this member.
             </p>
           </div>
-          <span
-            data-testid="activity-count"
-            className="text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-md"
-          >
-            {activityRows.length} records
-          </span>
+          <div className="flex items-center gap-3">
+            <span
+              data-testid="activity-count"
+              className="text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-md"
+            >
+              {activityRows.length} records
+            </span>
+            <Button
+              data-testid="assign-action-btn"
+              onClick={openDialog}
+              className="h-10 bg-slate-900 hover:bg-slate-800 text-white"
+            >
+              <Settings2 className="h-4 w-4 mr-2" />
+              Manage Plan
+            </Button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm" data-testid="activity-table">
@@ -660,74 +654,108 @@ export function AssignPlanTab({
                 </div>
 
                 {invoiceChoice === 'final' && (
-                  <div className="mt-5 p-4 rounded-lg bg-blue-50/40 border border-blue-100 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700 mb-3 flex items-center gap-1.5">
-                      <CreditCard className="h-3.5 w-3.5" />
-                      Bank Details · Mark as Paid
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <Field label="Payment Date">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              data-testid="bank-date-trigger"
-                              variant="outline"
-                              className="h-10 w-full justify-start font-normal bg-white text-left"
-                            >
-                              <CalendarIcon className="h-4 w-4 mr-2 text-slate-500" />
-                              {formatDate(bankDate.toISOString())}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={bankDate}
-                              onSelect={(d) => d && setBankDate(d)}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </Field>
-                      <Field label="Bank Name">
-                        <Input
-                          data-testid="bank-name"
-                          value={bankName}
-                          onChange={(e) => setBankName(e.target.value)}
-                          className="h-10 bg-white"
-                          placeholder="e.g. HDFC Bank"
-                        />
-                      </Field>
-                      <Field label="Reference No.">
-                        <Input
-                          data-testid="bank-ref"
-                          value={bankRef}
-                          onChange={(e) => setBankRef(e.target.value)}
-                          className="h-10 bg-white"
-                          placeholder="UTR / Txn ID"
-                        />
-                      </Field>
-                      <Field label="Amount">
-                        <Input
-                          data-testid="bank-amount"
-                          type="number"
-                          value={bankAmount}
-                          onChange={(e) => setBankAmount(e.target.value)}
-                          className="h-10 bg-white"
-                        />
-                      </Field>
-                      <div className="md:col-span-2">
-                        <Field label="Remark (optional)">
-                          <Textarea
-                            data-testid="bank-remark"
-                            value={bankRemark}
-                            onChange={(e) => setBankRemark(e.target.value)}
-                            rows={2}
-                            className="resize-none bg-white"
-                            placeholder="Any note for the ledger…"
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-6 mt-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+                        Payment Status
+                      </Label>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="paymentStatus"
+                            checked={!markPaid}
+                            onChange={() => setMarkPaid(false)}
+                            className="h-4 w-4 accent-slate-900"
+                            data-testid="radio-unpaid"
                           />
-                        </Field>
+                          Unpaid
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="paymentStatus"
+                            checked={markPaid}
+                            onChange={() => setMarkPaid(true)}
+                            className="h-4 w-4 accent-slate-900"
+                            data-testid="radio-paid"
+                          />
+                          Mark as Paid
+                        </label>
                       </div>
                     </div>
+
+                    {markPaid && (
+                      <div className="p-4 rounded-lg bg-blue-50/40 border border-blue-100 animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700 mb-3 flex items-center gap-1.5">
+                          <CreditCard className="h-3.5 w-3.5" />
+                          Bank Details · Mark as Paid
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <Field label="Payment Date">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  data-testid="bank-date-trigger"
+                                  variant="outline"
+                                  className="h-10 w-full justify-start font-normal bg-white text-left"
+                                >
+                                  <CalendarIcon className="h-4 w-4 mr-2 text-slate-500" />
+                                  {formatDate(bankDate.toISOString())}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={bankDate}
+                                  onSelect={(d) => d && setBankDate(d)}
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                          </Field>
+                          <Field label="Bank Name">
+                            <Input
+                              data-testid="bank-name"
+                              value={bankName}
+                              onChange={(e) => setBankName(e.target.value)}
+                              className="h-10 bg-white"
+                              placeholder="e.g. HDFC Bank"
+                            />
+                          </Field>
+                          <Field label="Reference No.">
+                            <Input
+                              data-testid="bank-ref"
+                              value={bankRef}
+                              onChange={(e) => setBankRef(e.target.value)}
+                              className="h-10 bg-white"
+                              placeholder="UTR / Txn ID"
+                            />
+                          </Field>
+                          <Field label="Amount">
+                            <Input
+                              data-testid="bank-amount"
+                              type="number"
+                              value={bankAmount}
+                              onChange={(e) => setBankAmount(e.target.value)}
+                              className="h-10 bg-white"
+                            />
+                          </Field>
+                          <div className="md:col-span-2">
+                            <Field label="Remark (optional)">
+                              <Textarea
+                                data-testid="bank-remark"
+                                value={bankRemark}
+                                onChange={(e) => setBankRemark(e.target.value)}
+                                rows={2}
+                                className="resize-none bg-white"
+                                placeholder="Any note for the ledger…"
+                              />
+                            </Field>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -747,7 +775,7 @@ export function AssignPlanTab({
               onClick={handleConfirm}
               className="bg-slate-900 hover:bg-slate-800 text-white"
             >
-              {invoiceChoice === 'final' ? 'Confirm & Mark as Paid' : 'Confirm'}
+              {invoiceChoice === 'final' && markPaid ? 'Confirm & Mark as Paid' : 'Confirm'}
             </Button>
           </DialogFooter>
         </DialogContent>

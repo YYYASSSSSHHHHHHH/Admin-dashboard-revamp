@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft,
+  Award,
   BadgeCheck,
   Building2,
   Calendar as CalendarIcon,
@@ -12,8 +13,10 @@ import {
   Clock,
   Globe,
   Hash,
+  Mail,
   MapPin,
   PauseCircle,
+  Radio,
   Users as UsersIcon,
   Wallet,
 } from 'lucide-react';
@@ -28,6 +31,10 @@ import { CompanyTab } from '@/components/dashboard/CompanyTab';
 import { ContactTab } from '@/components/dashboard/ContactTab';
 import { AddressTab } from '@/components/dashboard/AddressTab';
 import { AssignPlanTab } from '@/components/dashboard/AssignPlanTab';
+import { EmailTab } from '@/components/dashboard/EmailTab';
+import { BroadcastTab } from '@/components/dashboard/BroadcastTab';
+import { LoginLogTab } from '@/components/dashboard/LoginLogTab';
+import { StampTab } from '@/components/dashboard/StampTab';
 import { PLANS, formatDate, relativeTime } from '@/lib/mockData';
 
 interface Member {
@@ -41,6 +48,7 @@ interface Member {
   payment: string;
   expiryDate: string;
   daysLeft: string;
+  company?: string;
 }
 
 interface StatTileProps {
@@ -92,6 +100,10 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
   const [expiry, setExpiry] = useState('');
   const [timeline, setTimeline] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [emails, setEmails] = useState<any[]>([]);
+  const [broadcasts, setBroadcasts] = useState<any[]>([]);
+  const [loginLogs, setLoginLogs] = useState<any[]>([]);
+  const [stamps, setStamps] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchMembers() {
@@ -184,6 +196,108 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
         status: seed.payment.toLowerCase(),
         issuedAt: new Date(Date.now() - 12 * 24 * 3600 * 1000).toISOString(),
         dueDate: new Date(Date.now() + 2 * 24 * 3600 * 1000).toISOString(),
+      },
+    ]);
+
+    setEmails([
+      {
+        id: 'EML-9482',
+        serial: 1,
+        dateSent: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
+        subject: 'Welcome to our Premium Marketplace Community!',
+        body: `Hi ${seed.name},\n\nWe are thrilled to welcome you to our Premium Marketplace! Your account is now active and ready to use.\n\nExplore our workspace, connect with other members, and let us know if you have any questions.\n\nBest regards,\nJayesh Jain`,
+        recipientName: seed.name,
+        recipientEmail: seed.email,
+        senderName: 'Jayesh Jain',
+        senderEmail: 'jayesh@marketplace.io',
+      },
+    ]);
+
+    setBroadcasts([
+      {
+        id: 'BRD-4920',
+        at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+        sender: 'Jayesh Jain',
+        companyName: seed.company || seed.name,
+        type: 'WTB',
+        condition: 'New',
+        mainCategory: 'Accessories',
+        subCategory: 'Chargers',
+        text: 'Looking for high-quality Apple 20W USB-C Power Adapters. Need quick shipping to Dallas.',
+        qty: 500,
+        unit: 'Pcs',
+        priceOption: 'Quote',
+        priceAmount: 0,
+        sendingOption: 'Send to group',
+        audience: 'Charger suppliers',
+        status: 'Live',
+      },
+      {
+        id: 'BRD-1829',
+        at: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
+        sender: 'Jayesh Jain',
+        companyName: seed.company || seed.name,
+        type: 'WTS',
+        condition: 'Used',
+        mainCategory: 'Mobile',
+        subCategory: 'iPhone',
+        text: 'Available for immediate dispatch: Refurbished iPhone 13 Pro Max - 256GB - Grade A condition. Original boxes included.',
+        qty: 50,
+        unit: 'Pcs',
+        priceOption: 'Fixed',
+        priceAmount: 650,
+        sendingOption: 'Send to All',
+        audience: 'All Members',
+        status: 'Live',
+      },
+    ]);
+
+    setLoginLogs([
+      {
+        id: 'log-1',
+        serial: 1,
+        timestamp: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
+        ipAddress: '192.168.1.100',
+        deviceId: 'DEV-WIN-84920',
+        geoInfo: 'San Francisco, California, US',
+        macAddress: '00:1A:2B:3C:4D:5E',
+      },
+      {
+        id: 'log-2',
+        serial: 2,
+        timestamp: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
+        ipAddress: '184.22.109.5',
+        deviceId: 'DEV-MAC-94827',
+        geoInfo: 'Dallas, Texas, US',
+        macAddress: '3C:D9:2B:4F:1A:8E',
+      },
+      {
+        id: 'log-3',
+        serial: 3,
+        timestamp: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
+        ipAddress: '92.104.12.88',
+        deviceId: 'DEV-IPH-74928',
+        geoInfo: 'London, Greater London, GB',
+        macAddress: 'F4:5C:89:12:02:AA',
+      },
+    ]);
+
+    setStamps([
+      {
+        id: 'STMP-9482',
+        serial: 1,
+        appliedDate: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
+        badges: ['Identity', 'Email'],
+        remark: 'Primary phone and passport copy successfully certified.',
+        verifiedBy: 'Jayesh Jain',
+      },
+      {
+        id: 'STMP-1092',
+        serial: 2,
+        appliedDate: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString(),
+        badges: ['Documents', 'Account'],
+        remark: 'Company incorporation documents verified with registry.',
+        verifiedBy: 'Jayesh Jain',
       },
     ]);
   }, [seed]);
@@ -314,6 +428,50 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
               <Wallet className="h-3.5 w-3.5 mr-2" />
               Assign Plan
             </TabsTrigger>
+            <TabsTrigger
+              value="email"
+              data-testid="tab-email"
+              className="h-9 px-4 data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 rounded-md transition-all flex items-center cursor-pointer"
+            >
+              <Mail className="h-3.5 w-3.5 mr-2" />
+              Email Log
+              <span className="ml-2 text-[10px] font-semibold tabular-nums opacity-70">
+                {emails.length}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="broadcast"
+              data-testid="tab-broadcast"
+              className="h-9 px-4 data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 rounded-md transition-all flex items-center cursor-pointer"
+            >
+              <Radio className="h-3.5 w-3.5 mr-2" />
+              Broadcast
+              <span className="ml-2 text-[10px] font-semibold tabular-nums opacity-70">
+                {broadcasts.length}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="login-log"
+              data-testid="tab-login-log"
+              className="h-9 px-4 data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 rounded-md transition-all flex items-center cursor-pointer"
+            >
+              <Clock className="h-3.5 w-3.5 mr-2" />
+              History
+              <span className="ml-2 text-[10px] font-semibold tabular-nums opacity-70">
+                {loginLogs.length}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="stamp"
+              data-testid="tab-stamp"
+              className="h-9 px-4 data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 rounded-md transition-all flex items-center cursor-pointer"
+            >
+              <Award className="h-3.5 w-3.5 mr-2" />
+              Stamp
+              <span className="ml-2 text-[10px] font-semibold tabular-nums opacity-70">
+                {stamps.length}
+              </span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="company" className="mt-0 focus-visible:outline-none">
@@ -346,6 +504,22 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
               invoices={invoices}
               setInvoices={setInvoices}
             />
+          </TabsContent>
+
+          <TabsContent value="email" className="mt-0 focus-visible:outline-none">
+            <EmailTab member={seed} emails={emails} setEmails={setEmails} />
+          </TabsContent>
+
+          <TabsContent value="broadcast" className="mt-0 focus-visible:outline-none">
+            <BroadcastTab member={seed} broadcasts={broadcasts} setBroadcasts={setBroadcasts} />
+          </TabsContent>
+
+          <TabsContent value="login-log" className="mt-0 focus-visible:outline-none">
+            <LoginLogTab logs={loginLogs} />
+          </TabsContent>
+
+          <TabsContent value="stamp" className="mt-0 focus-visible:outline-none">
+            <StampTab stamps={stamps} setStamps={setStamps} />
           </TabsContent>
         </Tabs>
       </div>

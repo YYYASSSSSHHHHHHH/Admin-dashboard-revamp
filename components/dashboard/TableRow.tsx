@@ -76,7 +76,7 @@ export function TableRow({ member }: TableRowProps) {
           className="inline-flex items-center justify-center rounded px-2 py-0.5 text-[10px] font-bold tracking-wide border uppercase"
           style={{
             backgroundColor: paymentStyles.bg,
-            borderColor: paymentStyles.border,
+            borderColor: paymentStyles.borderColor,
             color: paymentStyles.color,
           }}
         >
