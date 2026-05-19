@@ -1,0 +1,67 @@
+export async function GET() {
+  const members = [
+    {
+      id: 'aria-lindqvist',
+      initials: 'AL',
+      name: 'Aria Lindqvist',
+      email: 'aria.lindqvist@northwave.io',
+      plan: 'Growth',
+      planPrice: '$49/monthly',
+      status: 'ACTIVE',
+      payment: 'PAID',
+      expiryDate: 'Jun 6, 2026',
+      daysLeft: '18d left',
+    },
+    {
+      id: 'tomas-beltran',
+      initials: 'TB',
+      name: 'Tomás Beltrán',
+      email: 'tbeltran@meridian.shop',
+      plan: 'Starter',
+      planPrice: '$19/monthly',
+      status: 'ACTIVE',
+      payment: 'PENDING',
+      expiryDate: 'May 23, 2026',
+      daysLeft: '4d left',
+    },
+    {
+      id: 'priya-raghavan',
+      initials: 'PR',
+      name: 'Priya Raghavan',
+      email: 'priya@orbitlabs.dev',
+      plan: 'Scale',
+      planPrice: '$99/monthly',
+      status: 'SUSPENDED',
+      payment: 'OVERDUE',
+      expiryDate: 'May 13, 2026',
+      daysLeft: 'Expired 6d ago',
+    },
+    {
+      id: 'mateo-ferrari',
+      initials: 'MF',
+      name: 'Mateo Ferrari',
+      email: 'mateo.f@brightboard.co',
+      plan: 'Enterprise',
+      planPrice: '$249/monthly',
+      status: 'ACTIVE',
+      payment: 'PAID',
+      expiryDate: 'Jul 14, 2026',
+      daysLeft: '56d left',
+    },
+    {
+      id: 'hana-okonkwo',
+      initials: 'HO',
+      name: 'Hana Okonkwo',
+      email: 'hana@looplane.studio',
+      plan: 'Growth',
+      planPrice: '$49/monthly',
+      status: 'ACTIVE',
+      payment: 'PAID',
+      expiryDate: 'May 31, 2026',
+      daysLeft: '12d left',
+    },
+  ];
+
+  return Response.json(members);
+}
+
