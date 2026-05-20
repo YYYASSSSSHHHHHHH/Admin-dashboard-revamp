@@ -17,6 +17,7 @@ import {
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Header } from '@/components/dashboard/Header';
 import { relativeTime, MOCK_ACTIVITIES } from '@/lib/mockData';
+import { StatusBadge } from '@/components/dashboard/StatusBadge';
 
 interface Member {
   id: string;
@@ -49,6 +50,14 @@ const planPrices: Record<string, number> = {
   Growth: 49,
   Scale: 99,
   Enterprise: 249,
+  'TK-LITE': 0,
+  'TK-PREMIUM': 18500,
+  'TK-STANDARD': 15000,
+  'TK FREE': 0,
+  'tk-lite': 0,
+  'tk-premium': 18500,
+  'tk-standard': 15000,
+  'tk-free': 0,
 };
 
 interface KpiProps {
@@ -213,14 +222,8 @@ export default function Dashboard() {
                       {m.plan} · {m.email}
                     </div>
                   </div>
-                  <span
-                    className={`hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border ${
-                      m.status === 'ACTIVE'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : 'bg-red-50 text-red-700 border-red-200'
-                    }`}
-                  >
-                    {m.status.toLowerCase()}
+                  <span className="hidden sm:inline-flex">
+                    <StatusBadge status={m.status} />
                   </span>
                   <Link
                     href={`/members/${m.id}`}

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Building2, Mail, Phone, Globe, FileText, Pencil, Check, X } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Building2, Mail, Phone, Globe, FileText, Pencil, Check, X, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -51,6 +51,7 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
 export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ companyName, ...details });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = () => {
     onSave(form);
@@ -63,6 +64,30 @@ export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
     setEditing(false);
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setForm((prev) => ({ ...prev, photo: event.target!.result as string }));
+          toast.success('Logo uploaded successfully');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset input so the same file can be uploaded again if needed
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Helper to determine if photo string is an image URL/data URL
+  const isImage = (val?: string) => {
+    if (!val) return false;
+    return val.startsWith('http') || val.startsWith('/') || val.startsWith('data:');
+  };
+
   return (
     <div
       data-testid="company-tab"
@@ -70,8 +95,12 @@ export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
     >
       <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-4">
-          <div className="h-14 w-14 rounded-xl bg-slate-900 text-white flex items-center justify-center font-display text-base font-semibold">
-            {details.photo || 'CO'}
+          <div className="h-14 w-14 rounded-xl bg-slate-900 text-white flex items-center justify-center font-display text-lg font-semibold overflow-hidden shrink-0 border border-slate-200">
+            {isImage(details.photo) ? (
+              <img src={details.photo} alt={companyName} className="h-full w-full object-cover" />
+            ) : (
+              '?'
+            )}
           </div>
           <div>
             <h2 className="font-display text-xl font-semibold text-slate-900 tracking-tight">
@@ -132,6 +161,44 @@ export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Branding / Logo Editor */}
+            <div className="md:col-span-2 border-b border-slate-100 pb-5 mb-1">
+              <Field label="Company Logo">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-5 mt-2">
+                  <div className="h-16 w-16 rounded-xl bg-slate-900 text-white flex items-center justify-center font-display text-lg font-semibold overflow-hidden shrink-0 border border-slate-200/50 shadow-sm">
+                    {isImage(form.photo) ? (
+                      <img src={form.photo} alt="Logo preview" className="h-full w-full object-cover" />
+                    ) : (
+                      '?'
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <div className="flex gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-9 relative overflow-hidden"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Upload className="h-3.5 w-3.5 mr-2" />
+                        Upload Image
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleFileChange}
+                        />
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-slate-500 font-medium leading-relaxed max-w-sm">
+                      Upload an image file (SVG, PNG, JPG). Recommended size is 120x120px.
+                    </p>
+                  </div>
+                </div>
+              </Field>
+            </div>
+
             <Field label="Company Name">
               <Input
                 data-testid="company-name-input"

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Pencil, Phone, Trash2, Star } from 'lucide-react';
+import { Plus, Pencil, Phone, Trash2, Star, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,6 +32,7 @@ interface Contact {
   lastName: string;
   designation: string;
   mobile: string;
+  email: string;
   status: string;
   photo: string;
   isMain?: boolean;
@@ -47,6 +48,7 @@ const emptyContact: Omit<Contact, 'id'> = {
   lastName: '',
   designation: 'owner',
   mobile: '',
+  email: '',
   status: 'active',
   photo: '',
 };
@@ -66,12 +68,8 @@ const initialsOf = (first = '', last = '') =>
 const designationLabel = (id: string) =>
   DESIGNATIONS.find((d) => d.id === id)?.label || id;
 
-const hasAnyMain = (list: Contact[]) => list.some((c) => c.isMain);
-const withMainDefault = (list: Contact[]): Contact[] =>
-  hasAnyMain(list) ? list : list.map((c, i) => ({ ...c, isMain: i === 0 }));
-
 export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps) {
-  const contacts = withMainDefault(rawContacts);
+  const contacts = rawContacts;
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Contact, 'id'> & { isMain?: boolean }>({ ...emptyContact, isMain: false });
@@ -79,7 +77,7 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
   const openAdd = () => {
     if (contacts.length >= MAX_CONTACTS) return;
     setEditingId(null);
-    setForm({ ...emptyContact, isMain: contacts.length === 0 });
+    setForm({ ...emptyContact, isMain: false });
     setOpen(true);
   };
 
@@ -94,7 +92,9 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
       toast.error('First name and last name are required');
       return;
     }
-    const photo = initialsOf(form.firstName, form.lastName);
+    const photo = form.photo && (form.photo.startsWith('data:image/') || form.photo.startsWith('http') || form.photo.includes('/'))
+      ? form.photo 
+      : initialsOf(form.firstName, form.lastName);
     if (editingId) {
       let updated = contacts.map((c) =>
         c.id === editingId ? { ...form, id: editingId, photo } : c
@@ -103,18 +103,15 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
         updated = updated.map((c) =>
           c.id === editingId ? c : { ...c, isMain: false }
         );
-      } else if (!updated.some((c) => c.isMain)) {
-        updated = updated.map((c, i) => ({ ...c, isMain: i === 0 }));
       }
       onChange(updated);
       toast.success('Contact updated');
     } else {
-      const isFirst = contacts.length === 0;
       const newContact: Contact = {
         ...form,
         id: `c${Date.now()}`,
         photo,
-        isMain: form.isMain || isFirst,
+        isMain: !!form.isMain,
       };
       let next = [...contacts, newContact];
       if (newContact.isMain) {
@@ -129,10 +126,7 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
   };
 
   const handleDelete = (id: string) => {
-    let next = contacts.filter((c) => c.id !== id);
-    if (next.length && !next.some((c) => c.isMain)) {
-      next = next.map((c, i) => ({ ...c, isMain: i === 0 }));
-    }
+    const next = contacts.filter((c) => c.id !== id);
     onChange(next);
     toast.success('Contact removed');
   };
@@ -167,11 +161,11 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
           </Button>
         </div>
 
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
           {contacts.length === 0 ? (
             <div
               data-testid="contact-empty"
-              className="md:col-span-2 text-sm text-slate-500 text-center py-10 border border-dashed border-slate-200 rounded-lg"
+              className="md:col-span-3 text-sm text-slate-500 text-center py-10 border border-dashed border-slate-200 rounded-lg"
             >
               No contacts yet. Add one to get started.
             </div>
@@ -183,8 +177,12 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
                 className="group border border-slate-200/80 rounded-xl p-5 hover:border-slate-300 hover:shadow-sm transition-all"
               >
                 <div className="flex items-start gap-3">
-                  <div className="h-11 w-11 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-semibold border border-slate-200 shrink-0">
-                    {c.photo}
+                  <div className="h-11 w-11 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-semibold border border-slate-200 shrink-0 overflow-hidden">
+                    {c.photo && (c.photo.startsWith('data:image/') || c.photo.startsWith('http') || c.photo.includes('/')) ? (
+                      <img src={c.photo} alt={c.firstName} className="h-full w-full object-cover" />
+                    ) : (
+                      c.photo
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -218,6 +216,12 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
                       <Phone className="h-3 w-3 text-slate-400" />
                       {c.mobile}
                     </div>
+                    {c.email && (
+                      <div className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 truncate">
+                        <Mail className="h-3 w-3 text-slate-400" />
+                        {c.email}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap text-slate-600">
@@ -275,11 +279,57 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
           </DialogHeader>
 
           <div className="flex items-center gap-4 py-2">
-            <div className="h-14 w-14 rounded-full bg-slate-900 text-white flex items-center justify-center text-base font-display font-semibold">
-              {initialsOf(form.firstName, form.lastName)}
+            <div className="h-14 w-14 rounded-full bg-slate-900 text-white flex items-center justify-center text-base font-display font-semibold overflow-hidden border border-slate-250 shrink-0">
+              {form.photo && (form.photo.startsWith('data:image/') || form.photo.startsWith('http') || form.photo.includes('/')) ? (
+                <img src={form.photo} alt="Preview" className="h-full w-full object-cover" />
+              ) : (
+                initialsOf(form.firstName, form.lastName)
+              )}
             </div>
-            <div className="text-xs text-slate-500">
-              Photo auto-generated from initials.
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => document.getElementById('contact-photo-upload')?.click()}
+                  className="h-8 text-xs font-semibold bg-white hover:bg-slate-50 cursor-pointer"
+                >
+                  Upload Photo
+                </Button>
+                {form.photo && (form.photo.startsWith('data:image/') || form.photo.startsWith('http') || form.photo.includes('/')) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setForm({ ...form, photo: '' })}
+                    className="h-8 text-xs font-semibold text-red-650 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+              <input
+                id="contact-photo-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      if (event.target?.result) {
+                        setForm({ ...form, photo: event.target.result as string });
+                      }
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+              <div className="text-[10px] text-slate-500">
+                Supports PNG, JPG, or GIF up to 2MB.
+              </div>
             </div>
           </div>
 
@@ -307,7 +357,7 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
                 value={form.designation}
                 onValueChange={(v) => setForm({ ...form, designation: v })}
               >
-                <SelectTrigger data-testid="contact-designation" className="h-11">
+                <SelectTrigger data-testid="contact-designation" className="h-11 w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -332,6 +382,19 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
                 placeholder="+1 415-555-0142"
               />
             </Field>
+            <div className="md:col-span-2">
+              <Field label="Email Address">
+                <Input
+                  data-testid="contact-email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="h-11"
+                  placeholder="e.g. aria.lindqvist@northwave.io"
+                />
+              </Field>
+            </div>
+
             <div className="md:col-span-2 flex items-center justify-between p-3.5 rounded-lg border border-slate-200 bg-slate-50/50">
               <div>
                 <Label className="text-sm font-medium text-slate-900">Status</Label>
@@ -363,7 +426,7 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
                   className="flex items-center justify-between p-3.5 rounded-lg border border-blue-200 bg-blue-50/60"
                 >
                   <div className="flex items-center gap-2">
-                    <Star className="h-4 w-4 text-blue-600 fill-blue-600" />
+                    <Star className="h-4 w-4 text-blue-600 fill-blue-600 shrink-0 mt-0.5" />
                     <div>
                       <Label className="text-sm font-medium text-blue-900">
                         Main Contact
@@ -373,6 +436,15 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
                       </p>
                     </div>
                   </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setForm({ ...form, isMain: false })}
+                    className="text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 h-8 px-2.5 rounded-md"
+                  >
+                    Unmark
+                  </Button>
                 </div>
               ) : (
                 <Button

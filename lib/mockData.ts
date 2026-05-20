@@ -2,59 +2,93 @@ export interface Plan {
   id: string;
   name: string;
   price: number;
-  billing: string;
+  billing: '15days' | 'monthly' | 'quarterly' | 'halfyearly' | 'yearly';
   features: string[];
+  dailyBroadcasts: number;
+  email: string;
+  status: 'active' | 'inactive';
+  permissions: {
+    sendall: boolean;
+    state: boolean;
+    city: boolean;
+    contacts: boolean;
+    address: boolean;
+    phone: boolean;
+  };
 }
 
 export const PLANS: Plan[] = [
   {
-    id: "starter",
-    name: "Starter",
-    price: 19,
+    id: "tk-lite",
+    name: "TK-LITE",
+    price: 0,
     billing: "monthly",
-    features: [
-      "Basic workspace access",
-      "Up to 10 active listings",
-      "Standard email support",
-    ],
+    features: ["5 Broadcasts daily", "lite@tk.com outbound email", "State targeting", "City targeting", "Phone No Show/Hide"],
+    dailyBroadcasts: 5,
+    email: "lite@tk.com",
+    status: "active",
+    permissions: {
+      sendall: false,
+      state: true,
+      city: true,
+      contacts: false,
+      address: false,
+      phone: true,
+    },
   },
   {
-    id: "growth",
-    name: "Growth",
-    price: 49,
-    billing: "monthly",
-    features: [
-      "Advanced workspace access",
-      "Up to 50 active listings",
-      "Priority email support",
-      "Detailed analytics dashboard",
-    ],
+    id: "tk-premium",
+    name: "TK-PREMIUM",
+    price: 18500,
+    billing: "yearly",
+    features: ["100 Broadcasts daily", "premium@tk.com outbound email", "All permission flags enabled"],
+    dailyBroadcasts: 100,
+    email: "premium@tk.com",
+    status: "active",
+    permissions: {
+      sendall: true,
+      state: true,
+      city: true,
+      contacts: true,
+      address: true,
+      phone: true,
+    },
   },
   {
-    id: "scale",
-    name: "Scale",
-    price: 99,
+    id: "tk-standard",
+    name: "TK-STANDARD",
+    price: 15000,
     billing: "monthly",
-    features: [
-      "Full workspace access",
-      "Unlimited listings",
-      "24/7 dedicated support",
-      "Custom integrations",
-      "Advanced analytics & reports",
-    ],
+    features: ["50 Broadcasts daily", "standard@tk.com outbound email", "All permission flags enabled"],
+    dailyBroadcasts: 50,
+    email: "standard@tk.com",
+    status: "active",
+    permissions: {
+      sendall: true,
+      state: true,
+      city: true,
+      contacts: true,
+      address: true,
+      phone: true,
+    },
   },
   {
-    id: "enterprise",
-    name: "Enterprise",
-    price: 249,
-    billing: "monthly",
-    features: [
-      "Custom workspace setup",
-      "Unlimited listings & seats",
-      "Dedicated account manager",
-      "SLA & custom terms",
-      "Custom training & onboarding",
-    ],
+    id: "tk-free",
+    name: "TK FREE",
+    price: 0,
+    billing: "15days",
+    features: ["2 Broadcasts daily", "free@tk.com outbound email", "All permission flags disabled"],
+    dailyBroadcasts: 2,
+    email: "free@tk.com",
+    status: "active",
+    permissions: {
+      sendall: false,
+      state: false,
+      city: false,
+      contacts: false,
+      address: false,
+      phone: false,
+    },
   },
 ];
 
@@ -66,9 +100,10 @@ export const DESIGNATIONS = [
 ];
 
 export const ADDRESS_TITLES = [
-  { id: "home", label: "Home Address" },
-  { id: "work", label: "Work / Office" },
-  { id: "billing", label: "Billing Address" },
+  { id: "company", label: "Company Address" },
+  { id: "work", label: "Work" },
+  { id: "factory", label: "Factory" },
+  { id: "warehouse", label: "Warehouse" },
 ];
 
 export const COUNTRIES = [

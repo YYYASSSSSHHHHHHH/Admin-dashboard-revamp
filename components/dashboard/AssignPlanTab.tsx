@@ -463,8 +463,8 @@ export function AssignPlanTab({
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent data-testid="assign-action-dialog" className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent data-testid="assign-action-dialog" className="max-w-3xl h-[690px] max-h-[90vh] flex flex-col justify-between overflow-hidden p-0">
+          <DialogHeader className="pt-6 px-6 pb-2">
             <DialogTitle className="font-display flex items-center gap-2">
               <Settings2 className="h-4 w-4 text-slate-500" />
               Plan Action
@@ -474,91 +474,42 @@ export function AssignPlanTab({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-5">
-            <Field label="Action">
-              <Select value={action} onValueChange={setAction}>
-                <SelectTrigger data-testid="dialog-action-select" className="h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACTIONS.map((a) => (
-                    <SelectItem
-                      key={a.id}
-                      value={a.id}
-                      data-testid={`dialog-action-${a.id}`}
-                    >
-                      {a.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-
+          <div className="flex-1 overflow-y-auto px-6 my-2 space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="Action">
+                <Select value={action} onValueChange={setAction}>
+                  <SelectTrigger data-testid="dialog-action-select" className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACTIONS.map((a) => (
+                      <SelectItem
+                        key={a.id}
+                        value={a.id}
+                        data-testid={`dialog-action-${a.id}`}
+                      >
+                        {a.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+
               {(action === 'assign' || action === 'upgrade') && (
-                <>
-                  <Field label="Plan">
-                    <Select value={planId} onValueChange={setPlanId}>
-                      <SelectTrigger data-testid="dialog-plan-select" className="h-11">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PLANS.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name} · ${p.price}/{p.billing}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="Start Date">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          data-testid="dialog-start-date"
-                          variant="outline"
-                          className={cn('h-11 w-full justify-start font-normal text-left')}
-                        >
-                          <CalendarIcon className="h-4 w-4 mr-2 text-slate-500" />
-                          {formatDate(startDate.toISOString())}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={startDate}
-                          onSelect={(d) => d && setStartDate(d)}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </Field>
-                  {action === 'assign' && (
-                    <Field label="Expiry Date" hint="Editable. Defaults to +30 days.">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            data-testid="dialog-expiry-date"
-                            variant="outline"
-                            className={cn('h-11 w-full justify-start font-normal text-left')}
-                          >
-                            <CalendarIcon className="h-4 w-4 mr-2 text-slate-500" />
-                            {formatDate(expiryDate.toISOString())}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={expiryDate}
-                            onSelect={(d) => d && setExpiryDate(d)}
-                            disabled={(d) => d <= startDate}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </Field>
-                  )}
-                </>
+                <Field label="Plan">
+                  <Select value={planId} onValueChange={setPlanId}>
+                    <SelectTrigger data-testid="dialog-plan-select" className="h-11">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PLANS.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name} · ${p.price}/{p.billing}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
               )}
 
               {action === 'extend' && (
@@ -578,8 +529,63 @@ export function AssignPlanTab({
                   </Select>
                 </Field>
               )}
+            </div>
 
-              {action === 'suspend' && (
+            {(action === 'assign' || action === 'upgrade') && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field label="Start Date">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        data-testid="dialog-start-date"
+                        variant="outline"
+                        className={cn('h-11 w-full justify-start font-normal text-left')}
+                      >
+                        <CalendarIcon className="h-4 w-4 mr-2 text-slate-500" />
+                        {formatDate(startDate.toISOString())}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={(d) => d && setStartDate(d)}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </Field>
+
+                {action === 'assign' && (
+                  <Field label="Expiry Date" hint="Editable. Defaults to +30 days.">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          data-testid="dialog-expiry-date"
+                          variant="outline"
+                          className={cn('h-11 w-full justify-start font-normal text-left')}
+                        >
+                          <CalendarIcon className="h-4 w-4 mr-2 text-slate-500" />
+                          {formatDate(expiryDate.toISOString())}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={expiryDate}
+                          onSelect={(d) => d && setExpiryDate(d)}
+                          disabled={(d) => d <= startDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </Field>
+                )}
+              </div>
+            )}
+
+            {action === 'suspend' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2 space-y-3">
                   <Field label="Suspension Reason">
                     <Select value={reasonId} onValueChange={setReasonId}>
@@ -607,9 +613,11 @@ export function AssignPlanTab({
                     </Field>
                   )}
                 </div>
-              )}
+              </div>
+            )}
 
-              {action === 'reactivate' && (
+            {action === 'reactivate' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
                   <Field label="Note (optional)">
                     <Textarea
@@ -622,8 +630,8 @@ export function AssignPlanTab({
                     />
                   </Field>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {invoiceApplicable && (
               <div className="pt-4 border-t border-dashed border-slate-200">
@@ -762,7 +770,7 @@ export function AssignPlanTab({
             )}
           </div>
 
-          <DialogFooter className="mt-4">
+          <DialogFooter className="pb-6 px-6 pt-4 border-t border-slate-100 mt-4 gap-2 sm:space-x-0">
             <Button
               data-testid="dialog-cancel"
               variant="outline"

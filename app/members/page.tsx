@@ -11,13 +11,17 @@ interface Member {
   id: string;
   initials: string;
   name: string;
+  companyName: string;
+  location: string;
   email: string;
+  mobileNumber: string;
   plan: string;
   planPrice: string;
   status: string;
   payment: string;
   expiryDate: string;
   daysLeft: string;
+  registrationDate: string;
 }
 
 export default function MembersPage() {
@@ -41,43 +45,41 @@ export default function MembersPage() {
         setLoading(false);
       }
     }
-
     fetchMembers();
   }, []);
 
   useEffect(() => {
     let filtered = members;
 
-    // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(
-        (member) =>
-          member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          member.email.toLowerCase().includes(searchTerm.toLowerCase())
+        (m) =>
+          m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          m.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          m.companyName.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Filter by status
     if (statusFilter !== 'All statuses') {
-      filtered = filtered.filter((member) => member.status === statusFilter);
+      filtered = filtered.filter((m) => m.status === statusFilter);
     }
 
-    // Filter by plan
     if (planFilter !== 'All plans') {
-      filtered = filtered.filter((member) => member.plan === planFilter);
+      filtered = filtered.filter((m) => m.plan === planFilter);
     }
 
     setFilteredMembers(filtered);
   }, [searchTerm, statusFilter, planFilter, members]);
 
-  const statusOptions = ['All statuses', 'ACTIVE', 'SUSPENDED'];
-  const planOptions = [
-    'All plans',
-    'Starter',
-    'Growth',
-    'Scale',
-    'Enterprise',
+  const statusOptions = [
+    'All statuses',
+    'ACTIVE',
+    'PENDING',
+    'SUSPENDED',
+    'INCOMPLETE',
+    'INACTIVE',
   ];
+  const planOptions = ['All plans', 'Starter', 'Growth', 'Scale', 'Enterprise'];
 
   if (loading) {
     return (
@@ -92,7 +94,7 @@ export default function MembersPage() {
   return (
     <DashboardLayout>
       <div>
-        {/* Header Section */}
+        {/* Header */}
         <div className="mb-5">
           <Header
             title="Members"
@@ -102,8 +104,8 @@ export default function MembersPage() {
           />
         </div>
 
-        {/* Search and Filters Section - White Container */}
-        <div 
+        {/* Search and Filters */}
+        <div
           className="p-4 border border-b-0 bg-white flex flex-col sm:flex-row gap-3 items-stretch sm:items-center"
           style={{ borderColor: '#E5E7EB', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}
         >
@@ -126,7 +128,7 @@ export default function MembersPage() {
           />
         </div>
 
-        {/* Table Section */}
+        {/* Table */}
         <MembersTable members={filteredMembers} />
       </div>
     </DashboardLayout>

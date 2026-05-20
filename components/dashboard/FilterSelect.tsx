@@ -25,11 +25,14 @@ export function FilterSelect({ label, options, defaultValue, onChange, showFilte
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {options.map((option) => (
-          <SelectItem key={option} value={option}>
-            {option}
-          </SelectItem>
-        ))}
+        {options.map((option) => {
+          const label = option.charAt(0).toUpperCase() + option.slice(1).toLowerCase();
+          return (
+            <SelectItem key={option} value={option} className="text-xs">
+              {label}
+            </SelectItem>
+          );
+        })}
       </SelectContent>
     </Select>
   );

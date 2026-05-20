@@ -83,6 +83,14 @@ const planPrices: Record<string, number> = {
   Growth: 49,
   Scale: 99,
   Enterprise: 249,
+  'TK-LITE': 0,
+  'TK-PREMIUM': 18500,
+  'TK-STANDARD': 15000,
+  'TK FREE': 0,
+  'tk-lite': 0,
+  'tk-premium': 18500,
+  'tk-standard': 15000,
+  'tk-free': 0,
 };
 
 export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: string }) {
@@ -148,6 +156,7 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
         lastName: lName,
         designation: 'owner',
         mobile: '+1 415-555-0199',
+        email: seed.email,
         status: 'active',
         photo: seed.initials,
         isMain: true,
@@ -170,7 +179,7 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
     const activePlan = PLANS.find((p) => p.name === seed.plan) || PLANS[1];
     setPlan(activePlan);
     setStatus(seed.status.toLowerCase());
-    
+
     // Parse/infer standard Date
     const today = new Date();
     const expiryDate = new Date(today);
@@ -405,9 +414,6 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
             >
               <UsersIcon className="h-3.5 w-3.5 mr-2" />
               Contact
-              <span className="ml-2 text-[10px] font-semibold tabular-nums opacity-70">
-                {contacts.length}
-              </span>
             </TabsTrigger>
             <TabsTrigger
               value="address"
@@ -416,9 +422,6 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
             >
               <MapPin className="h-3.5 w-3.5 mr-2" />
               Address
-              <span className="ml-2 text-[10px] font-semibold tabular-nums opacity-70">
-                {addresses.length}
-              </span>
             </TabsTrigger>
             <TabsTrigger
               value="assign-plan"
@@ -435,9 +438,6 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
             >
               <Mail className="h-3.5 w-3.5 mr-2" />
               Email Log
-              <span className="ml-2 text-[10px] font-semibold tabular-nums opacity-70">
-                {emails.length}
-              </span>
             </TabsTrigger>
             <TabsTrigger
               value="broadcast"
@@ -446,9 +446,6 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
             >
               <Radio className="h-3.5 w-3.5 mr-2" />
               Broadcast
-              <span className="ml-2 text-[10px] font-semibold tabular-nums opacity-70">
-                {broadcasts.length}
-              </span>
             </TabsTrigger>
             <TabsTrigger
               value="login-log"
@@ -457,9 +454,6 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
             >
               <Clock className="h-3.5 w-3.5 mr-2" />
               History
-              <span className="ml-2 text-[10px] font-semibold tabular-nums opacity-70">
-                {loginLogs.length}
-              </span>
             </TabsTrigger>
             <TabsTrigger
               value="stamp"
@@ -468,9 +462,6 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
             >
               <Award className="h-3.5 w-3.5 mr-2" />
               Stamp
-              <span className="ml-2 text-[10px] font-semibold tabular-nums opacity-70">
-                {stamps.length}
-              </span>
             </TabsTrigger>
           </TabsList>
 
