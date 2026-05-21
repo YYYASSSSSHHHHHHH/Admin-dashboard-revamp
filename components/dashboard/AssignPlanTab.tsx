@@ -412,11 +412,10 @@ export function AssignPlanTab({
                       <td className="px-6 py-3">
                         <div className="inline-flex items-center gap-2">
                           <span
-                            className={`h-7 w-7 rounded-full flex items-center justify-center ${
-                              r.kind === 'invoice'
+                            className={`h-7 w-7 rounded-full flex items-center justify-center ${r.kind === 'invoice'
                                 ? 'bg-blue-50 text-blue-600 border border-blue-100'
                                 : 'bg-slate-100 text-slate-700 border border-slate-200'
-                            }`}
+                              }`}
                           >
                             <Icon className="h-3.5 w-3.5" />
                           </span>
@@ -436,15 +435,14 @@ export function AssignPlanTab({
                               ${r.amount.toFixed(2)}
                             </div>
                             <div
-                              className={`text-[10px] font-semibold uppercase tracking-wider mt-0.5 ${
-                                r.status === 'paid'
+                              className={`text-[10px] font-semibold uppercase tracking-wider mt-0.5 ${r.status === 'paid'
                                   ? 'text-emerald-700'
                                   : r.status === 'overdue'
                                     ? 'text-red-700'
                                     : r.status === 'pending'
                                       ? 'text-amber-700'
                                       : 'text-slate-500'
-                              }`}
+                                }`}
                             >
                               {r.status || '—'}
                             </div>
@@ -645,11 +643,10 @@ export function AssignPlanTab({
                       key={c.id}
                       data-testid={`invoice-choice-${c.id}`}
                       onClick={() => setInvoiceChoice(c.id)}
-                      className={`text-left p-3 rounded-lg border-2 transition-all ${
-                        invoiceChoice === c.id
+                      className={`text-left p-3 rounded-lg border-2 transition-all ${invoiceChoice === c.id
                           ? 'border-slate-900 bg-slate-50'
                           : 'border-slate-200 hover:border-slate-300'
-                      }`}
+                        }`}
                     >
                       <div
                         className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border mb-2 ${c.cls}`}

@@ -17,6 +17,7 @@ import {
   MapPin,
   PauseCircle,
   Radio,
+  SlidersHorizontal,
   Users as UsersIcon,
   Wallet,
 } from 'lucide-react';
@@ -33,6 +34,7 @@ import { AddressTab } from '@/components/dashboard/AddressTab';
 import { AssignPlanTab } from '@/components/dashboard/AssignPlanTab';
 import { EmailTab } from '@/components/dashboard/EmailTab';
 import { BroadcastTab } from '@/components/dashboard/BroadcastTab';
+import { BroadcastSettings } from '@/components/dashboard/BroadcastSettings';
 import { LoginLogTab } from '@/components/dashboard/LoginLogTab';
 import { StampTab } from '@/components/dashboard/StampTab';
 import { PLANS, formatDate, relativeTime } from '@/lib/mockData';
@@ -448,6 +450,14 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
               Broadcast
             </TabsTrigger>
             <TabsTrigger
+              value="broadcast-settings"
+              data-testid="tab-broadcast-settings"
+              className="h-9 px-4 data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 rounded-md transition-all flex items-center cursor-pointer"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 mr-2" />
+              Broadcast Setting
+            </TabsTrigger>
+            <TabsTrigger
               value="login-log"
               data-testid="tab-login-log"
               className="h-9 px-4 data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 rounded-md transition-all flex items-center cursor-pointer"
@@ -503,6 +513,24 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
 
           <TabsContent value="broadcast" className="mt-0 focus-visible:outline-none">
             <BroadcastTab member={seed} broadcasts={broadcasts} setBroadcasts={setBroadcasts} />
+          </TabsContent>
+
+          <TabsContent value="broadcast-settings" className="mt-0 focus-visible:outline-none">
+            <div className="bg-white border border-slate-200/80 rounded-xl shadow-sm">
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <h2 className="font-display text-xl font-semibold text-slate-900 tracking-tight">
+                    Broadcast Setting
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Control the exact market parameters and subcategory feeds enabled for this user.
+                  </p>
+                </div>
+              </div>
+              <div className="p-6">
+                <BroadcastSettings />
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="login-log" className="mt-0 focus-visible:outline-none">

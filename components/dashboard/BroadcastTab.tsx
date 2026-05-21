@@ -14,10 +14,10 @@ import {
   Clock,
   Building2,
   Eye,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -36,7 +36,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
-import { BroadcastSettings } from '@/components/dashboard/BroadcastSettings';
 import { formatDate, relativeTime } from '@/lib/mockData';
 import { toast } from 'sonner';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
@@ -75,8 +74,7 @@ const SUB_CATEGORIES: Record<string, string[]> = {
 const AUDIENCES = ['All Members', 'Charger suppliers', 'Electronics distributors', 'Mobile buyers'];
 
 export function BroadcastTab({ member, broadcasts, setBroadcasts }: BroadcastTabProps) {
-  const [activeSegment, setActiveSegment] = useState<'log' | 'settings'>('log');
-  const [approvalRequired, setApprovalRequired] = useState(false);
+  const [approvalRequired, setApprovalRequired] = useState(true);
 
   // Modal state
   const [open, setOpen] = useState(false);
@@ -174,70 +172,54 @@ export function BroadcastTab({ member, broadcasts, setBroadcasts }: BroadcastTab
 
   return (
     <div className="space-y-5" data-testid="broadcast-tab">
+      {/* Approval Required Card */}
+      <div className="bg-white border border-slate-200/80 rounded-xl p-5 md:p-6 shadow-sm flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="h-10 w-10 rounded-lg border border-slate-100 bg-slate-50/50 flex items-center justify-center shrink-0">
+            <ShieldCheck className="h-5 w-5 text-slate-600" />
+          </div>
+          <div>
+            <h3 className="font-display text-sm font-semibold text-slate-900">
+              Approval Required
+            </h3>
+            <p className="text-xs text-slate-500 mt-1 leading-normal">
+              When ON, new broadcasts start as <span className="text-amber-600 font-semibold">Pending</span> and need admin approval to go Live.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-semibold text-[#16a34a]">Required</span>
+          <Switch
+            checked={approvalRequired}
+            onCheckedChange={setApprovalRequired}
+            className="data-[state=checked]:bg-[#0f172a]"
+          />
+        </div>
+      </div>
+
       {/* Main Broadcast Container */}
       <div className="bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
-        {/* Header with Segment Toggle */}
+        {/* Header */}
         <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4 bg-white">
           <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              <h2 className="font-display text-xl font-semibold text-slate-900 tracking-tight">
-                {activeSegment === 'log' ? 'Broadcast History' : 'Broadcast Setting'}
-              </h2>
-              {activeSegment === 'log' && (
-                <div className="flex items-center gap-2.5 bg-slate-50/80 px-4 py-1.5 rounded-full border border-slate-200/80 shadow-[0_1px_2px_rgba(0,0,0,0.02)] ml-2 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => setApprovalRequired(!approvalRequired)}>
-                  <Checkbox
-                    checked={approvalRequired}
-                    onCheckedChange={(checked) => setApprovalRequired(checked as boolean)}
-                    className="h-4 w-4 data-[state=checked]:bg-[#0f172a] data-[state=checked]:text-white border-slate-300 rounded-[4px]"
-                  />
-                  <span className="text-[13px] font-semibold text-[#164e87] select-none">Approval Required</span>
-                </div>
-              )}
-            </div>
-            <p className="text-sm text-slate-500">
-              {activeSegment === 'log'
-                ? 'Click any row to view, edit, or change status. When approval is ON, new broadcasts start as Pending.'
-                : 'Control the exact market parameters and subcategory feeds enabled for this user.'}
+            <h2 className="font-display text-xl font-semibold text-slate-900 tracking-tight">
+              Broadcast History
+            </h2>
+            <p className="text-xs text-slate-500">
+              Click any row to view, edit, or change status.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            {activeSegment === 'log' && (
-              <span className="text-[11px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg h-10 flex items-center justify-center">
-                {broadcasts.length} broadcasts
-              </span>
-            )}
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={() => setActiveSegment('log')}
-                className={`h-10 px-4 font-semibold text-xs transition-all flex items-center gap-1.5 rounded-lg cursor-pointer ${activeSegment === 'log'
-                    ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-sm'
-                    : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 shadow-sm'
-                  }`}
-              >
-                <ListFilter className="h-4 w-4" />
-                History Log
-              </Button>
-              <Button
-                onClick={() => setActiveSegment('settings')}
-                className={`h-10 px-4 font-semibold text-xs transition-all flex items-center gap-1.5 rounded-lg cursor-pointer ${activeSegment === 'settings'
-                    ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-sm'
-                    : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 shadow-sm'
-                  }`}
-              >
-                <Settings2 className="h-4 w-4" />
-                Settings
-              </Button>
-            </div>
+          <div>
+            <span className="text-[11px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg h-9 flex items-center justify-center">
+              {broadcasts.length} broadcasts
+            </span>
           </div>
         </div>
 
         <div className="relative w-full">
           {/* LOG TAB */}
-          <div
-            className={`w-full transition-all duration-300 ease-in-out ${activeSegment === 'log' ? 'opacity-100 pointer-events-auto block' : 'hidden opacity-0'
-              }`}
-          >
+          <div className="w-full">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -295,20 +277,11 @@ export function BroadcastTab({ member, broadcasts, setBroadcasts }: BroadcastTab
               </table>
             </div>
           </div>
-
-          {/* SETTINGS TAB */}
-          <div
-            className={`w-full transition-all duration-300 ease-in-out ${activeSegment === 'settings' ? 'opacity-100 pointer-events-auto block' : 'hidden opacity-0'
-              }`}
-          >
-            <BroadcastSettings />
-          </div>
         </div>
       </div>
 
-      {/* Broadcast Details Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-3xl h-[690px] max-h-[90vh] flex flex-col justify-between overflow-hidden p-0">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-0">
           {selectedBroadcast && (
             <>
               <DialogHeader className="pt-6 px-6 pb-2">

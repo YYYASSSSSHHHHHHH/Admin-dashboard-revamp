@@ -4,24 +4,18 @@ import { useState, useMemo } from 'react';
 import {
   Radio,
   Search,
-  SlidersHorizontal,
-  Calendar,
-  Building,
-  User,
-  Info,
   CheckCircle,
-  XCircle,
   Eye,
-  Trash2,
-  Sliders,
-  ChevronRight,
-  Sparkles
+  Edit2,
+  Building2,
+  Clock,
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Header } from '@/components/dashboard/Header';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -91,58 +85,103 @@ const DEFAULT_BROADCASTS: BroadcastRecord[] = [
   }
 ];
 
+function formatDateDisplay(isoString: string) {
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return isoString;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  return { date: `${day}-${month}-${year}`, time: `${String(hours).padStart(2,'0')}:${minutes}:${seconds} ${ampm}` };
+}
+
 export default function BroadcastHistoryPage() {
   const [broadcasts, setBroadcasts] = useState<BroadcastRecord[]>(DEFAULT_BROADCASTS);
-  
-  // Search & Filter States
+
+  // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [audienceFilter, setAudienceFilter] = useState('All');
 
-  // Drawer / Modal State
+  // Modal state
   const [selectedBroadcast, setSelectedBroadcast] = useState<BroadcastRecord | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
-  // Filtered broadcasts listing
+  // Edit form states (matching BroadcastTab.tsx pattern)
+  const [editText, setEditText] = useState('');
+  const [editType, setEditType] = useState<'WTB' | 'WTS'>('WTB');
+  const [editQty, setEditQty] = useState('');
+  const [editUnit, setEditUnit] = useState('Pcs');
+  const [editSendingOption, setEditSendingOption] = useState('SendToAll');
+
   const filteredBroadcasts = useMemo(() => {
     return broadcasts.filter((b) => {
-      const matchesSearch = 
+      const matchesSearch =
         b.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
         b.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         b.text.toLowerCase().includes(searchQuery.toLowerCase());
-      
       const matchesStatus = statusFilter === 'All' || b.status.toLowerCase() === statusFilter.toLowerCase();
-      
-      const matchesAudience = audienceFilter === 'All' || 
+      const matchesAudience =
+        audienceFilter === 'All' ||
         (audienceFilter === 'SendToAll' && b.sendingOption === 'SendToAll') ||
         (audienceFilter === 'SendToGroup' && b.sendingOption === 'SendToGroup');
-
       return matchesSearch && matchesStatus && matchesAudience;
     });
   }, [broadcasts, searchQuery, statusFilter, audienceFilter]);
 
-  // Handle status update
+  const handleRowClick = (b: BroadcastRecord) => {
+    setSelectedBroadcast(b);
+    setEditText(b.text);
+    setEditType(b.type);
+    setEditQty(String(b.qty));
+    setEditUnit(b.unit);
+    setEditSendingOption(b.sendingOption);
+    setIsEditing(false);
+    setModalOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editText.trim()) {
+      toast.error('Broadcast message is required.');
+      return;
+    }
+    setBroadcasts(prev =>
+      prev.map(b =>
+        b.id === selectedBroadcast?.id
+          ? { ...b, text: editText, type: editType, qty: parseFloat(editQty) || 0, unit: editUnit, sendingOption: editSendingOption }
+          : b
+      )
+    );
+    setSelectedBroadcast(prev => prev ? { ...prev, text: editText, type: editType, qty: parseFloat(editQty) || 0, unit: editUnit, sendingOption: editSendingOption } : null);
+    toast.success('Broadcast details updated');
+    setIsEditing(false);
+  };
+
   const handleUpdateStatus = (id: string, newStatus: string) => {
     setBroadcasts(prev => prev.map(b => b.id === id ? { ...b, status: newStatus } : b));
     if (selectedBroadcast?.id === id) {
       setSelectedBroadcast(prev => prev ? { ...prev, status: newStatus } : null);
     }
-    toast.success(`Broadcast status successfully updated to ${newStatus}`);
+    toast.success(`Broadcast status updated to ${newStatus}`);
   };
 
   return (
     <DashboardLayout>
       <div className="space-y-6" data-testid="broadcast-history-page">
-        {/* Header Title Section */}
         <Header
           title="Broadcast History"
           subtitle="Audit ledger of all sent broadcast feeds, search queries, and platform-wide market notifications."
         />
 
-        {/* Search & Dynamic Filter Control Bar */}
-        <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-sm space-y-4">
+        {/* Search & Filter Bar */}
+        <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-sm">
           <div className="flex flex-col sm:flex-row items-center gap-3">
-            {/* Search */}
             <div className="relative w-full sm:flex-1">
               <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
               <Input
@@ -153,7 +192,6 @@ export default function BroadcastHistoryPage() {
               />
             </div>
 
-            {/* Audience filter */}
             <Select value={audienceFilter} onValueChange={setAudienceFilter}>
               <SelectTrigger className="h-10 w-full sm:w-48 bg-white border-slate-250 text-xs">
                 <SelectValue placeholder="Audience filter" />
@@ -165,7 +203,6 @@ export default function BroadcastHistoryPage() {
               </SelectContent>
             </Select>
 
-            {/* Status filter */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="h-10 w-full sm:w-44 bg-white border-slate-250 text-xs">
                 <SelectValue placeholder="Status filter" />
@@ -180,7 +217,7 @@ export default function BroadcastHistoryPage() {
           </div>
         </div>
 
-        {/* Ledger Table Box */}
+        {/* Table */}
         <div className="bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -204,86 +241,27 @@ export default function BroadcastHistoryPage() {
                   </tr>
                 ) : (
                   filteredBroadcasts.map((b, i) => {
-                    // S.No: Descending calculated index logic: broadcasts.length - index
                     const descendingNo = String(broadcasts.length - i).padStart(2, '0');
-
-                    // Date-Time formatted parameters
-                    const d = new Date(b.at);
-                    let dateFormatted = b.at;
-                    let timeFormatted = '';
-                    if (!isNaN(d.getTime())) {
-                      const day = String(d.getDate()).padStart(2, '0');
-                      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                      const month = monthNames[d.getMonth()];
-                      const year = d.getFullYear();
-                      dateFormatted = `${day}-${month}-${year}`;
-
-                      let hours = d.getHours();
-                      const minutes = String(d.getMinutes()).padStart(2, '0');
-                      const seconds = String(d.getSeconds()).padStart(2, '0');
-                      const ampm = hours >= 12 ? 'PM' : 'AM';
-                      hours = hours % 12;
-                      hours = hours ? hours : 12;
-                      timeFormatted = `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
-                    }
-
-                    // Format audience: e.g. SendToAll -> Send To All
-                    const displaySendTo = b.sendingOption === 'SendToAll' 
-                      ? 'Send To All' 
-                      : b.sendingOption === 'SendToGroup' 
-                        ? 'Send To Group' 
-                        : b.sendingOption;
+                    const formatted = formatDateDisplay(b.at);
+                    const displaySendTo = b.sendingOption === 'SendToAll' ? 'Send To All' : b.sendingOption === 'SendToGroup' ? 'Send To Group' : b.sendingOption;
 
                     return (
                       <tr
                         key={b.id}
-                        onClick={() => {
-                          setSelectedBroadcast(b);
-                          setModalOpen(true);
-                        }}
+                        onClick={() => handleRowClick(b)}
                         className="hover:bg-slate-50/40 cursor-pointer transition-colors group select-none"
                       >
-                        {/* Serial number column */}
-                        <td className="px-6 py-4.5 text-slate-400 font-mono text-xs font-semibold">
-                          {descendingNo}
-                        </td>
-                        
-                        {/* Date and Time column */}
+                        <td className="px-6 py-4.5 text-slate-400 font-mono text-xs font-semibold">{descendingNo}</td>
                         <td className="px-6 py-4.5">
-                          <div className="font-semibold text-slate-900 text-[13px] whitespace-nowrap">{dateFormatted}</div>
-                          {timeFormatted && (
-                            <div className="text-[11px] font-medium text-slate-400 mt-0.5 whitespace-nowrap">
-                              {timeFormatted}
-                            </div>
-                          )}
+                          <div className="font-semibold text-slate-900 text-[13px] whitespace-nowrap">{typeof formatted === 'object' ? formatted.date : formatted}</div>
+                          {typeof formatted === 'object' && <div className="text-[11px] font-medium text-slate-400 mt-0.5 whitespace-nowrap">{formatted.time}</div>}
                         </td>
-
-                        {/* Broadcaster Name */}
-                        <td className="px-6 py-4.5 text-slate-900 font-semibold text-[13px] whitespace-nowrap">
-                          {b.sender}
-                        </td>
-
-                        {/* Company Name */}
-                        <td className="px-6 py-4.5 text-slate-650 text-[13px] whitespace-nowrap">
-                          {b.companyName}
-                        </td>
-
-                        {/* Message Text */}
+                        <td className="px-6 py-4.5 text-slate-900 font-semibold text-[13px] whitespace-nowrap">{b.sender}</td>
+                        <td className="px-6 py-4.5 text-slate-650 text-[13px] whitespace-nowrap">{b.companyName}</td>
                         <td className="px-6 py-4.5">
-                          <span 
-                            className="text-slate-650 text-[13px] truncate max-w-[240px] block leading-relaxed" 
-                            title={b.text}
-                          >
-                            {b.text}
-                          </span>
+                          <span className="text-slate-650 text-[13px] truncate max-w-[240px] block leading-relaxed" title={b.text}>{b.text}</span>
                         </td>
-
-                        {/* Send To */}
-                        <td className="px-6 py-4.5 text-slate-600 font-medium text-[13px] whitespace-nowrap">
-                          {displaySendTo}
-                        </td>
-
-                        {/* Status Badge */}
+                        <td className="px-6 py-4.5 text-slate-600 font-medium text-[13px] whitespace-nowrap">{displaySendTo}</td>
                         <td className="px-6 py-4.5 text-right">
                           <div className="flex justify-end">
                             <StatusBadge status={b.status} />
@@ -298,113 +276,194 @@ export default function BroadcastHistoryPage() {
           </div>
         </div>
 
-        {/* Detailed Audit & Change Action Dialog */}
-        <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-          <DialogContent className="sm:max-w-xl bg-white border border-slate-250 p-6 shadow-xl rounded-xl z-[150]">
+        {/* Detail Modal — matches BroadcastTab.tsx popup exactly */}
+        <Dialog open={modalOpen} onOpenChange={(open) => { setModalOpen(open); if (!open) setIsEditing(false); }}>
+          <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-0">
             {selectedBroadcast && (
               <>
-                <DialogHeader>
-                  <DialogTitle className="font-display text-base font-bold text-slate-900 flex items-center gap-2">
-                    <Radio className="h-5 w-5 text-slate-500" />
-                    Broadcast Feed Audit
-                  </DialogTitle>
-                  <DialogDescription className="text-slate-500 text-xs">
-                    Review post variables, target scope permissions, and update status settings.
-                  </DialogDescription>
+                <DialogHeader className="pt-6 px-6 pb-2">
+                  <div className="flex items-center gap-2.5 pr-6">
+                    <DialogTitle className="text-lg font-semibold leading-none tracking-tight font-display flex items-center gap-2">
+                      <Radio className="h-4 w-4 text-slate-500" />
+                      Broadcast Information
+                    </DialogTitle>
+                    {isEditing ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border bg-amber-50 text-amber-700 border-amber-200">
+                        <Edit2 className="h-3 w-3" />
+                        Editing
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border bg-blue-50 text-blue-700 border-blue-200">
+                        <Eye className="h-3 w-3" />
+                        Viewing
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <DialogDescription className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      <Building2 className="h-3.5 w-3.5 text-slate-400" />
+                      <span>
+                        {selectedBroadcast.companyName} · ID:{' '}
+                        <span className="font-mono text-slate-700">{selectedBroadcast.id}</span>
+                      </span>
+                    </DialogDescription>
+                    {/* Edit / Save button — top right, same as BroadcastTab */}
+                    {!isEditing ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-7 px-3 text-xs text-blue-700 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+                        onClick={() => setIsEditing(true)}
+                      >
+                        <Edit2 className="h-3 w-3 mr-1.5" />
+                        Edit
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-7 px-3 text-xs text-slate-700 border-slate-200 hover:bg-slate-50"
+                        onClick={handleSaveEdit}
+                      >
+                        <CheckCircle className="h-3 w-3 mr-1.5" />
+                        Save
+                      </Button>
+                    )}
+                  </div>
                 </DialogHeader>
 
-                <div className="space-y-4 py-3">
-                  {/* Broadcaster profile snapshot */}
-                  <div className="flex items-center gap-3 bg-slate-50 p-3.5 rounded-lg border border-slate-200/50">
-                    <div className="h-9 w-9 rounded-full bg-slate-900 text-white flex items-center justify-center font-display text-xs font-bold shrink-0">
-                      {selectedBroadcast.sender.charAt(0)}
+                <div className="flex-1 overflow-y-auto px-6 my-2 space-y-5">
+                  {/* 2-col info grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Broadcaster</div>
+                      <div className="text-sm font-medium text-slate-900 mt-1.5">{selectedBroadcast.sender}</div>
                     </div>
                     <div>
-                      <div className="font-bold text-slate-900 text-xs">{selectedBroadcast.sender}</div>
-                      <div className="text-[10px] font-semibold text-slate-450 uppercase mt-0.5">{selectedBroadcast.companyName}</div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Company Name</div>
+                      <div className="text-sm font-medium text-slate-900 mt-1.5">{selectedBroadcast.companyName}</div>
                     </div>
-                    <div className="ml-auto">
-                      <StatusBadge status={selectedBroadcast.status} />
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Broadcast Type</div>
+                      {!isEditing ? (
+                        <div className="text-sm font-medium text-slate-900 mt-1.5">
+                          {selectedBroadcast.type === 'WTB' ? 'Want to Buy (WTB)' : 'Want to Sell (WTS)'}
+                        </div>
+                      ) : (
+                        <Select value={editType} onValueChange={(v: any) => setEditType(v)}>
+                          <SelectTrigger className="h-9 mt-1.5 bg-white"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="WTB">Want to Buy (WTB)</SelectItem>
+                            <SelectItem value="WTS">Want to Sell (WTS)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Quantity & Unit</div>
+                      {!isEditing ? (
+                        <div className="text-sm font-medium text-slate-900 mt-1.5">{selectedBroadcast.qty} {selectedBroadcast.unit}</div>
+                      ) : (
+                        <div className="flex gap-2 mt-1.5">
+                          <Input type="number" value={editQty} onChange={(e) => setEditQty(e.target.value)} className="h-9 bg-white text-sm w-24" />
+                          <Select value={editUnit} onValueChange={setEditUnit}>
+                            <SelectTrigger className="h-9 bg-white flex-1"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Pcs">Pcs</SelectItem>
+                              <SelectItem value="Kg">Kg</SelectItem>
+                              <SelectItem value="MT">MT</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Sending Option</div>
+                      {!isEditing ? (
+                        <div className="text-sm font-medium text-slate-900 mt-1.5">
+                          {selectedBroadcast.sendingOption === 'SendToAll' ? 'Send To All' : 'Send To Group'}
+                        </div>
+                      ) : (
+                        <Select value={editSendingOption} onValueChange={setEditSendingOption}>
+                          <SelectTrigger className="h-9 mt-1.5 bg-white"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="SendToAll">Send To All</SelectItem>
+                            <SelectItem value="SendToGroup">Send To Group</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Status</div>
+                      <div className="mt-1.5">
+                        <StatusBadge status={selectedBroadcast.status} />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Core variables grid */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Product Type</div>
-                      <div className="text-xs font-bold text-slate-800">{selectedBroadcast.type === 'WTB' ? 'Want to Buy (WTB)' : 'Want to Sell (WTS)'}</div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quantity & Unit</div>
-                      <div className="text-xs font-bold text-slate-800">{selectedBroadcast.qty} {selectedBroadcast.unit}</div>
-                    </div>
+                  {/* Message */}
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 mb-2">Broadcast Message</div>
+                    {!isEditing ? (
+                      <div className="text-sm text-slate-900 border border-slate-200 bg-slate-50/60 rounded-lg p-3.5 leading-relaxed">
+                        {selectedBroadcast.text}
+                      </div>
+                    ) : (
+                      <Textarea
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        rows={3}
+                        className="resize-none bg-white text-sm border-slate-200"
+                      />
+                    )}
                   </div>
 
-                  {/* Message body */}
-                  <div className="space-y-1.5 pt-1">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Original Message Details</div>
-                    <div className="bg-slate-50/50 p-3 rounded-lg border border-slate-200/50 text-xs font-medium text-slate-700 leading-relaxed italic">
-                      "{selectedBroadcast.text}"
+                  {/* Timestamp row */}
+                  <div className="flex items-center justify-between pt-3 border-t border-dashed border-slate-200">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <Clock className="h-3.5 w-3.5" />
+                      {(() => {
+                        const f = formatDateDisplay(selectedBroadcast.at);
+                        return typeof f === 'object' ? `Submitted · ${f.date}` : f;
+                      })()}
                     </div>
-                  </div>
-
-                  {/* Audience reach */}
-                  <div className="flex items-center gap-2 pt-1 text-xs text-slate-500 font-semibold">
-                    <Info className="h-4 w-4 text-slate-400" />
-                    <span>Audience Reach Group:</span>
-                    <span className="bg-slate-100 border text-slate-700 rounded px-1.5 py-0.5 text-[10px]">
-                      {selectedBroadcast.sendingOption === 'SendToAll' ? 'Send To All' : 'Send To Group'}
-                    </span>
-                  </div>
-
-                  {/* Operational Change Actions */}
-                  <div className="space-y-2 pt-2 border-t border-slate-100">
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Administrative Actions</div>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      <Button
-                        onClick={() => handleUpdateStatus(selectedBroadcast.id, 'Approved')}
-                        className={`h-9 text-xs font-bold px-3 rounded-lg flex items-center gap-1.5 cursor-pointer ${
-                          selectedBroadcast.status === 'Approved'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
-                            : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'
-                        }`}
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                        Approve / Publish Live
-                      </Button>
-                      <Button
-                        onClick={() => handleUpdateStatus(selectedBroadcast.id, 'Rejected')}
-                        className={`h-9 text-xs font-bold px-3 rounded-lg flex items-center gap-1.5 cursor-pointer ${
-                          selectedBroadcast.status === 'Rejected'
-                            ? 'bg-red-50 text-red-700 border border-red-300'
-                            : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'
-                        }`}
-                      >
-                        <XCircle className="h-4 w-4" />
-                        Reject / Suspend Feed
-                      </Button>
-                      <Button
-                        onClick={() => handleUpdateStatus(selectedBroadcast.id, 'Hidden')}
-                        className={`h-9 text-xs font-bold px-3 rounded-lg flex items-center gap-1.5 cursor-pointer ${
-                          selectedBroadcast.status === 'Hidden'
-                            ? 'bg-slate-100 text-slate-800 border border-slate-300'
-                            : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200'
-                        }`}
-                      >
-                        <Eye className="h-4 w-4" />
-                        Hide from Feed
-                      </Button>
-                    </div>
+                    <StatusBadge status={selectedBroadcast.status} />
                   </div>
                 </div>
 
-                <DialogFooter className="pt-2 border-t border-slate-100">
-                  <Button
-                    onClick={() => setModalOpen(false)}
-                    className="h-10 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white cursor-pointer"
+                {/* Footer — Other Actions (Hide/Reject) left | Cancel + Approve right */}
+                <DialogFooter className="pb-6 px-6 pt-4 border-t border-slate-100 mt-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full sm:space-x-0">
+                  <Select
+                    onValueChange={(action) => {
+                      if (action === 'hide') { handleUpdateStatus(selectedBroadcast.id, 'Hidden'); setModalOpen(false); }
+                      else if (action === 'reject') { handleUpdateStatus(selectedBroadcast.id, 'Rejected'); setModalOpen(false); }
+                    }}
                   >
-                    Close Auditor
-                  </Button>
+                    <SelectTrigger className="h-10 w-full sm:w-auto border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-sm font-medium sm:min-w-[160px]">
+                      <SelectValue placeholder="Other Actions" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-slate-200 z-[200]">
+                      <SelectItem value="hide">Hide Broadcast</SelectItem>
+                      <SelectItem value="reject" className="text-red-600 focus:text-red-600">Reject</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <div className="flex items-center gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      className="h-9 px-4 text-sm"
+                      onClick={() => { setModalOpen(false); setIsEditing(false); }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className="h-9 px-4 text-sm bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5"
+                      onClick={() => { handleUpdateStatus(selectedBroadcast.id, 'Approved'); setModalOpen(false); }}
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Approve
+                    </Button>
+                  </div>
                 </DialogFooter>
               </>
             )}

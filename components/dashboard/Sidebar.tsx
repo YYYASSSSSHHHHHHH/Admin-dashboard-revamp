@@ -45,6 +45,12 @@ export function Sidebar() {
       if (pathname === '/plans' || pathname === '/membership-label' || pathname === '/invoices') {
         setOpenSections((prev) => ({ ...prev, billing: true }));
       }
+      if (pathname === '/call-request' || pathname === '/contact-request') {
+        setOpenSections((prev) => ({ ...prev, request: true }));
+      }
+      if (pathname === '/field-setting' || pathname === '/templates') {
+        setOpenSections((prev) => ({ ...prev, settings: true }));
+      }
     }
   }, [pathname]);
 
@@ -59,9 +65,9 @@ export function Sidebar() {
   // Main direct routes (Dashboard, Members) turn black when matched
   const getLinkClass = (href: string) => {
     const isActive = activeRoute === href || (href !== '/' && activeRoute.startsWith(href));
-    return `flex items-center gap-3 px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${isActive
-        ? 'bg-slate-900 text-white font-semibold shadow-sm'
-        : 'text-slate-650 hover:bg-slate-50 hover:text-slate-900 font-medium'
+    return `flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition-all duration-150 cursor-pointer ${isActive
+      ? 'bg-slate-900 text-white font-semibold shadow-sm'
+      : 'text-slate-650 hover:bg-slate-55 hover:text-slate-900 font-medium'
       }`;
   };
 
@@ -74,10 +80,10 @@ export function Sidebar() {
       return activeRoute === '/send-email' || activeRoute === '/broadcast-history';
     }
     if (section === 'request') {
-      return activeRoute === '#call-request' || activeRoute === '#contact-request';
+      return activeRoute === '/call-request' || activeRoute === '/contact-request';
     }
     if (section === 'settings') {
-      return activeRoute === '#field-setting' || activeRoute === '#templates';
+      return activeRoute === '/field-setting' || activeRoute === '/templates';
     }
     return false;
   };
@@ -85,18 +91,18 @@ export function Sidebar() {
   // Dropdown parent header class: turns black ONLY if a child inside it is active
   const getHeaderClass = (section: string) => {
     const isActive = isSectionActive(section);
-    return `w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer ${isActive
-        ? 'bg-slate-900 text-white font-semibold shadow-sm'
-        : 'text-slate-650 hover:bg-slate-50 hover:text-slate-900 font-medium'
+    return `w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs transition-all duration-150 cursor-pointer ${isActive
+      ? 'bg-slate-900 text-white font-semibold shadow-sm'
+      : 'text-slate-650 hover:bg-slate-55 hover:text-slate-900 font-medium'
       }`;
   };
 
   // Child sub-link class: active turns soft dark tint with bold text
   const getSubLinkClass = (href: string) => {
     const isActive = activeRoute === href;
-    return `flex items-center gap-2.5 py-1.5 px-3 rounded-md text-[11px] transition-all duration-150 cursor-pointer ${isActive
-        ? 'bg-slate-900/5 text-slate-950 font-semibold border-l-2 border-slate-900 rounded-l-none pl-2.5'
-        : 'text-slate-500 hover:text-slate-950 hover:bg-slate-50/70 font-medium'
+    return `flex items-center gap-2.5 py-2 px-3 rounded-md text-[11px] transition-all duration-150 cursor-pointer ${isActive
+      ? 'bg-slate-900/5 text-slate-950 font-semibold border-l-2 border-slate-900 rounded-l-none pl-2.5'
+      : 'text-slate-500 hover:text-slate-950 hover:bg-slate-50/70 font-medium'
       }`;
   };
 
@@ -171,9 +177,8 @@ export function Sidebar() {
 
           {/* Children items with tree line vertical border styling */}
           <div
-            className={`pl-4 ml-5 border-l border-slate-100 space-y-1.5 overflow-hidden transition-all duration-350 ease-in-out ${
-              openSections.billing ? 'max-h-40 py-1.5 opacity-100' : 'max-h-0 py-0 opacity-0 pointer-events-none'
-            }`}
+            className={`pl-4 ml-5 border-l border-slate-100 space-y-1.5 overflow-hidden transition-all duration-350 ease-in-out ${openSections.billing ? 'max-h-40 py-1.5 opacity-100' : 'max-h-0 py-0 opacity-0 pointer-events-none'
+              }`}
           >
             <Link
               href="/plans"
@@ -269,18 +274,18 @@ export function Sidebar() {
               }`}
           >
             <Link
-              href="#"
-              onClick={() => handleSubLinkClick('#call-request')}
-              className={getSubLinkClass('#call-request')}
+              href="/call-request"
+              onClick={() => handleSubLinkClick('/call-request')}
+              className={getSubLinkClass('/call-request')}
               data-testid="sub-call-request"
             >
               <Phone className="h-3.5 w-3.5 shrink-0 text-slate-400" />
               <span>Call Request</span>
             </Link>
             <Link
-              href="#"
-              onClick={() => handleSubLinkClick('#contact-request')}
-              className={getSubLinkClass('#contact-request')}
+              href="/contact-request"
+              onClick={() => handleSubLinkClick('/contact-request')}
+              className={getSubLinkClass('/contact-request')}
               data-testid="sub-contact-request"
             >
               <Contact className="h-3.5 w-3.5 shrink-0 text-slate-400" />
@@ -311,18 +316,18 @@ export function Sidebar() {
               }`}
           >
             <Link
-              href="#"
-              onClick={() => handleSubLinkClick('#field-setting')}
-              className={getSubLinkClass('#field-setting')}
+              href="/field-setting"
+              onClick={() => handleSubLinkClick('/field-setting')}
+              className={getSubLinkClass('/field-setting')}
               data-testid="sub-field-setting"
             >
               <Sliders className="h-3.5 w-3.5 shrink-0 text-slate-400" />
               <span>Field Setting</span>
             </Link>
             <Link
-              href="#"
-              onClick={() => handleSubLinkClick('#templates')}
-              className={getSubLinkClass('#templates')}
+              href="/templates"
+              onClick={() => handleSubLinkClick('/templates')}
+              className={getSubLinkClass('/templates')}
               data-testid="sub-templates"
             >
               <FileCode className="h-3.5 w-3.5 shrink-0 text-slate-400" />
