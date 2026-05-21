@@ -41,7 +41,6 @@ import {
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { formatDate, relativeTime } from '@/lib/constants';
 import { toast } from 'sonner';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
 interface BroadcastRecord {
   id: string;
