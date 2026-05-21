@@ -37,7 +37,7 @@ import { BroadcastTab } from '@/components/dashboard/BroadcastTab';
 import { BroadcastSettings } from '@/components/dashboard/BroadcastSettings';
 import { LoginLogTab } from '@/components/dashboard/LoginLogTab';
 import { StampTab } from '@/components/dashboard/StampTab';
-import { PLANS, formatDate, relativeTime } from '@/lib/mockData';
+import { PLANS, formatDate, relativeTime } from '@/lib/constants';
 
 interface Member {
   id: string;
@@ -100,7 +100,6 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Editable local state populated once member is resolved
   const [companyName, setCompanyName] = useState('');
   const [companyDetails, setCompanyDetails] = useState<any>({});
   const [contacts, setContacts] = useState<any[]>([]);
@@ -116,202 +115,49 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
   const [stamps, setStamps] = useState<any[]>([]);
 
   useEffect(() => {
-    async function fetchMembers() {
+    async function fetchMemberDetails() {
       try {
-        const response = await fetch('/api/members');
+        const response = await fetch(`/api/members/${memberId}`);
+        if (!response.ok) throw new Error('Failed to fetch');
         const data = await response.json();
-        setMembers(data);
+        
+        setCompanyName(data.companyName || '');
+        setCompanyDetails(data.companyDetails || {});
+        setContacts(data.contacts || []);
+        setAddresses(data.addresses || []);
+        setPlan(data.plan || {});
+        setStatus(data.status || 'ACTIVE');
+        setExpiry(data.expiry || '');
+        setTimeline(data.timeline || []);
+        setInvoices(data.invoices || []);
+        setEmails(data.emails || []);
+        setBroadcasts(data.broadcasts || []);
+        setLoginLogs(data.loginLogs || []);
+        setStamps(data.stamps || []);
+        
+        setMembers([{
+          id: data.id || memberId,
+          initials: data.initials || 'AD',
+          name: data.name || 'Admin User',
+          email: data.email || 'admin@example.com',
+          plan: data.plan?.name || 'Growth',
+          planPrice: String(data.plan?.price || '49'),
+          status: data.status || 'ACTIVE',
+          payment: data.payment || 'PAID',
+          expiryDate: data.expiry || '',
+          daysLeft: '30',
+          company: data.companyName || 'Company Inc'
+        }]);
       } catch (error) {
-        console.error('Error fetching members:', error);
+        console.error('Error fetching member details:', error);
       } finally {
         setLoading(false);
       }
     }
-    fetchMembers();
-  }, []);
+    fetchMemberDetails();
+  }, [memberId]);
 
-  const seed = useMemo(() => {
-    if (members.length === 0) return null;
-    return members.find((m) => m.id === memberId) || members[0];
-  }, [members, memberId]);
-
-  // Initialize form state once member loaded
-  useEffect(() => {
-    if (!seed) return;
-
-    setCompanyName(seed.name + ' Inc');
-    setCompanyDetails({
-      photo: seed.initials,
-      website: `https://${seed.name.toLowerCase().replace(/\s+/g, '')}.io`,
-      email: seed.email,
-      phone: '+1 415-555-0199',
-      gstNo: 'GSTIN-94827',
-      aboutUs: 'Operational workspace and premium membership subscription.',
-    });
-
-    const fName = seed.name.split(' ')[0] || 'Admin';
-    const lName = seed.name.split(' ')[1] || 'User';
-    setContacts([
-      {
-        id: 'c1',
-        firstName: fName,
-        lastName: lName,
-        designation: 'owner',
-        mobile: '+1 415-555-0199',
-        email: seed.email,
-        status: 'active',
-        photo: seed.initials,
-        isMain: true,
-      },
-    ]);
-
-    setAddresses([
-      {
-        id: 'a1',
-        title: 'work',
-        line1: '100 Pine Street',
-        line2: 'Suite 1200',
-        city: 'San Francisco',
-        state: 'California',
-        country: 'us',
-        pinCode: '94111',
-      },
-    ]);
-
-    const activePlan = PLANS.find((p) => p.name === seed.plan) || PLANS[1];
-    setPlan(activePlan);
-    setStatus(seed.status.toLowerCase());
-
-    // Parse/infer standard Date
-    const today = new Date();
-    const expiryDate = new Date(today);
-    expiryDate.setDate(expiryDate.getDate() + 30);
-    setExpiry(expiryDate.toISOString());
-
-    setTimeline([
-      {
-        id: 1,
-        type: 'plan_assigned',
-        title: 'Plan assigned',
-        description: `${activePlan.name} Plan assigned initially`,
-        at: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
-        actor: 'System',
-      },
-    ]);
-
-    setInvoices([
-      {
-        id: 'INV-8492',
-        amount: activePlan.price,
-        type: 'final',
-        status: seed.payment.toLowerCase(),
-        issuedAt: new Date(Date.now() - 12 * 24 * 3600 * 1000).toISOString(),
-        dueDate: new Date(Date.now() + 2 * 24 * 3600 * 1000).toISOString(),
-      },
-    ]);
-
-    setEmails([
-      {
-        id: 'EML-9482',
-        serial: 1,
-        dateSent: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
-        subject: 'Welcome to our Premium Marketplace Community!',
-        body: `Hi ${seed.name},\n\nWe are thrilled to welcome you to our Premium Marketplace! Your account is now active and ready to use.\n\nExplore our workspace, connect with other members, and let us know if you have any questions.\n\nBest regards,\nJayesh Jain`,
-        recipientName: seed.name,
-        recipientEmail: seed.email,
-        senderName: 'Jayesh Jain',
-        senderEmail: 'jayesh@marketplace.io',
-      },
-    ]);
-
-    setBroadcasts([
-      {
-        id: 'BRD-4920',
-        at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-        sender: 'Jayesh Jain',
-        companyName: seed.company || seed.name,
-        type: 'WTB',
-        condition: 'New',
-        mainCategory: 'Accessories',
-        subCategory: 'Chargers',
-        text: 'Looking for high-quality Apple 20W USB-C Power Adapters. Need quick shipping to Dallas.',
-        qty: 500,
-        unit: 'Pcs',
-        priceOption: 'Quote',
-        priceAmount: 0,
-        sendingOption: 'Send to group',
-        audience: 'Charger suppliers',
-        status: 'Live',
-      },
-      {
-        id: 'BRD-1829',
-        at: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
-        sender: 'Jayesh Jain',
-        companyName: seed.company || seed.name,
-        type: 'WTS',
-        condition: 'Used',
-        mainCategory: 'Mobile',
-        subCategory: 'iPhone',
-        text: 'Available for immediate dispatch: Refurbished iPhone 13 Pro Max - 256GB - Grade A condition. Original boxes included.',
-        qty: 50,
-        unit: 'Pcs',
-        priceOption: 'Fixed',
-        priceAmount: 650,
-        sendingOption: 'Send to All',
-        audience: 'All Members',
-        status: 'Live',
-      },
-    ]);
-
-    setLoginLogs([
-      {
-        id: 'log-1',
-        serial: 1,
-        timestamp: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
-        ipAddress: '192.168.1.100',
-        deviceId: 'DEV-WIN-84920',
-        geoInfo: 'San Francisco, California, US',
-        macAddress: '00:1A:2B:3C:4D:5E',
-      },
-      {
-        id: 'log-2',
-        serial: 2,
-        timestamp: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
-        ipAddress: '184.22.109.5',
-        deviceId: 'DEV-MAC-94827',
-        geoInfo: 'Dallas, Texas, US',
-        macAddress: '3C:D9:2B:4F:1A:8E',
-      },
-      {
-        id: 'log-3',
-        serial: 3,
-        timestamp: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
-        ipAddress: '92.104.12.88',
-        deviceId: 'DEV-IPH-74928',
-        geoInfo: 'London, Greater London, GB',
-        macAddress: 'F4:5C:89:12:02:AA',
-      },
-    ]);
-
-    setStamps([
-      {
-        id: 'STMP-9482',
-        serial: 1,
-        appliedDate: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
-        badges: ['Identity', 'Email'],
-        remark: 'Primary phone and passport copy successfully certified.',
-        verifiedBy: 'Jayesh Jain',
-      },
-      {
-        id: 'STMP-1092',
-        serial: 2,
-        appliedDate: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString(),
-        badges: ['Documents', 'Account'],
-        remark: 'Company incorporation documents verified with registry.',
-        verifiedBy: 'Jayesh Jain',
-      },
-    ]);
-  }, [seed]);
+  const seed = members[0];
 
   if (loading || !seed) {
     return (
@@ -334,7 +180,6 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
   return (
     <DashboardLayout>
       <div data-testid="member-detail-page">
-        {/* Back link */}
         <Link
           href="/members"
           data-testid="member-detail-back"
@@ -344,7 +189,6 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
           Back to Members
         </Link>
 
-        {/* Persistent stats header */}
         <header
           data-testid="persistent-header"
           className="bg-white border border-slate-200/80 rounded-xl shadow-sm p-6 mb-6"
@@ -398,7 +242,6 @@ export default function MemberDetail({ defaultTab = 'company' }: { defaultTab?: 
           </div>
         </header>
 
-        {/* Tabs */}
         <Tabs defaultValue={defaultTab} data-testid="member-detail-tabs">
           <TabsList className="bg-white border border-slate-200/80 h-11 p-1 rounded-lg shadow-sm mb-5 flex w-max">
             <TabsTrigger

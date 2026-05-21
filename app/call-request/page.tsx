@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Phone } from 'lucide-react';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Header } from '@/components/dashboard/Header';
@@ -22,7 +22,7 @@ import {
 import { toast } from 'sonner';
 
 interface CallRequestRecord {
-  id: string; // request number (mobile)
+  id: string;
   at: string;
   name: string;
   initials: string;
@@ -34,44 +34,7 @@ interface CallRequestRecord {
   message: string;
 }
 
-const DEFAULT_CALL_REQUESTS: CallRequestRecord[] = [
-  {
-    id: '+91 98765 43210',
-    at: '2026-05-08T10:15:00Z',
-    name: 'Sanjay Jain',
-    initials: 'SJ',
-    companyName: 'Paxaal International',
-    location: 'Ahmedabad, Gujarat, India',
-    mobile: '+91 98765 43210',
-    topic: 'Request a callback',
-    status: 'OPEN',
-    message: 'Wants to discuss premium membership features and bulk licensing.'
-  },
-  {
-    id: '+91 87654 32109',
-    at: '2026-05-07T14:30:00Z',
-    name: 'Meera Patel',
-    initials: 'MP',
-    companyName: 'Patel Exporters',
-    location: 'Surat, Gujarat, India',
-    mobile: '+91 87654 32109',
-    topic: 'Membership',
-    status: 'CALLBACK',
-    message: 'Needs help renewing their deactivated gold tier plan.'
-  },
-  {
-    id: '+91 76543 21098',
-    at: '2026-05-06T09:45:00Z',
-    name: 'Rajesh Sharma',
-    initials: 'RS',
-    companyName: 'Sharma & Sons Co.',
-    location: 'Mumbai, Maharashtra, India',
-    mobile: '+91 76543 21098',
-    topic: 'Billing',
-    status: 'CLOSED',
-    message: 'Required duplicate invoice copy for tax filing purposes.'
-  }
-];
+
 
 function formatDateDisplay(isoString: string) {
   const d = new Date(isoString);
@@ -88,20 +51,34 @@ function formatDateDisplay(isoString: string) {
 }
 
 export default function CallRequestsPage() {
-  const [requests, setRequests] = useState<CallRequestRecord[]>(DEFAULT_CALL_REQUESTS);
+  const [requests, setRequests] = useState<CallRequestRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All statuses');
 
-  // Modal State
   const [selectedRequest, setSelectedRequest] = useState<CallRequestRecord | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [tempStatus, setTempStatus] = useState<string>('OPEN');
 
   const statusOptions = ['All statuses', 'OPEN', 'CALLBACK', 'CLOSED'];
 
-  // Filter logic
+  useEffect(() => {
+    const fetchCallRequests = async () => {
+      try {
+        const response = await fetch('/api/call-requests');
+        if (response.ok) {
+          const data = await response.json();
+          setRequests(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch call requests:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchCallRequests();
+  }, []);
   const filteredRequests = useMemo(() => {
     return requests.filter((r) => {
       const matchesSearch =
@@ -124,19 +101,29 @@ export default function CallRequestsPage() {
     setModalOpen(true);
   };
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (!selectedRequest) return;
-    setRequests((prev) =>
-      prev.map((r) => (r.id === selectedRequest.id ? { ...r, status: tempStatus } : r))
-    );
-    toast.success(`Request marked as ${tempStatus.charAt(0) + tempStatus.slice(1).toLowerCase()}`);
-    setModalOpen(false);
+    
+    try {
+      await fetch(`/api/call-requests/${selectedRequest.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: tempStatus })
+      });
+      
+      setRequests((prev) =>
+        prev.map((r) => (r.id === selectedRequest.id ? { ...r, status: tempStatus } : r))
+      );
+      toast.success(`Request marked as ${tempStatus.charAt(0) + tempStatus.slice(1).toLowerCase()}`);
+      setModalOpen(false);
+    } catch (error) {
+      toast.error('Failed to update request status');
+    }
   };
 
   return (
     <DashboardLayout>
       <div>
-        {/* Header */}
         <div className="mb-5">
           <Header
             title="Callback Requests"
@@ -144,7 +131,6 @@ export default function CallRequestsPage() {
           />
         </div>
 
-        {/* Search and Filters — exact replicate of the members page filters wrapper */}
         <div
           className="p-4 border border-b-0 bg-white flex flex-col sm:flex-row gap-3 items-stretch sm:items-center"
           style={{ borderColor: '#E5E7EB', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}
@@ -162,7 +148,6 @@ export default function CallRequestsPage() {
           />
         </div>
 
-        {/* Table — exact replicate of MembersTable & TableRow styling */}
         <div
           className="bg-white border overflow-hidden shadow-sm"
           style={{
@@ -187,7 +172,13 @@ export default function CallRequestsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredRequests.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center text-sm text-slate-500">
+                    Loading call requests...
+                  </td>
+                </tr>
+              ) : filteredRequests.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-sm text-slate-500">
                     No callback requests match your filters.
@@ -203,12 +194,10 @@ export default function CallRequestsPage() {
                       className="border-b hover:bg-slate-55 transition-colors bg-white cursor-pointer select-none"
                       style={{ borderColor: '#F1F5F9' }}
                     >
-                      {/* SR.NO */}
                       <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs font-semibold">
                         {String(index + 1).padStart(2, '0')}
                       </td>
 
-                      {/* DATE & TIME */}
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
                           <span style={{ color: '#0F172A', fontSize: '13px', fontWeight: '600' }} className="whitespace-nowrap">
@@ -222,7 +211,6 @@ export default function CallRequestsPage() {
                         </div>
                       </td >
 
-                      {/* NAME & COMPANY using standardized MemberAvatar */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <MemberAvatar initials={r.initials} />
@@ -233,27 +221,22 @@ export default function CallRequestsPage() {
                         </div>
                       </td>
 
-                      {/* LOCATION */}
                       <td className="px-6 py-4 text-[13px] text-slate-650 font-medium whitespace-nowrap">
                         {r.location}
                       </td>
 
-                      {/* MOBILE */}
                       <td className="px-6 py-4 text-[13px] text-slate-650 font-medium whitespace-nowrap">
                         {r.mobile}
                       </td>
 
-                      {/* REQUEST NO */}
                       <td className="px-6 py-4 text-[13px] text-slate-650 font-medium whitespace-nowrap">
                         {r.id}
                       </td>
 
-                      {/* TOPIC */}
                       <td className="px-6 py-4 text-[13px] text-slate-650 font-medium whitespace-nowrap">
                         {r.topic}
                       </td>
 
-                      {/* STATUS Badge */}
                       <td className="px-6 py-4">
                         <StatusBadge status={r.status} />
                       </td>
@@ -265,7 +248,6 @@ export default function CallRequestsPage() {
           </table>
         </div>
 
-        {/* Dialog Details Modal */}
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
           <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col overflow-hidden p-0 bg-white border border-slate-200">
             {selectedRequest && (
@@ -283,7 +265,6 @@ export default function CallRequestsPage() {
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
-                  {/* Detailed Overview Grid */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Company Name</div>
@@ -312,7 +293,6 @@ export default function CallRequestsPage() {
                     </div>
                   </div>
 
-                  {/* Styled Gray Message Box */}
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Original Callback Note</div>
                     <div className="text-xs text-slate-700 bg-[#f8fafc] border border-slate-200/60 rounded-lg p-3.5 leading-relaxed italic">
@@ -320,7 +300,6 @@ export default function CallRequestsPage() {
                     </div>
                   </div>
 
-                  {/* Status Radio Buttons Selector using pre-existing RadioGroup & Label */}
                   <div className="pt-2 border-t border-slate-100">
                     <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">Update Status</div>
                     <RadioGroup

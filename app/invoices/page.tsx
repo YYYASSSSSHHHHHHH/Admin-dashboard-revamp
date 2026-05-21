@@ -63,7 +63,6 @@ import { SearchBar } from '@/components/dashboard/SearchBar';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { toast } from 'sonner';
 
-// Data Schema representing individual Invoice Record
 interface BankSettlement {
   settlementDate: string;
   amountPaid: string;
@@ -87,109 +86,58 @@ interface InvoiceRecord {
   settlementDetails: BankSettlement | null;
 }
 
-// 1. Default Pre-loaded Invoice Records
-const SEED_INVOICES: InvoiceRecord[] = [
-  {
-    id: '01',
-    invoiceNumber: 'ISPL/1002/2026-27',
-    creationDate: '28-Apr-2026',
-    companyName: 'Speedtech Systems',
-    location: 'Ahmedabad, Gujarat',
-    clientEmail: 'billing@speedtech.com',
-    billingAmount: '₹ 18,500',
-    associatedPlan: 'TK-Premium',
-    validityStart: '28-Apr-2026',
-    validityEnd: '28-Apr-2027',
-    status: 'Unpaid',
-    settlementDetails: null
-  },
-  {
-    id: '02',
-    invoiceNumber: 'ISPL/1001/2026-27',
-    creationDate: '24-Apr-2026',
-    companyName: 'Speedtech Systems',
-    location: 'Ahmedabad, Gujarat',
-    clientEmail: 'billing@speedtech.com',
-    billingAmount: '₹ 5,000',
-    associatedPlan: 'TK-Lite',
-    validityStart: '24-Apr-2026',
-    validityEnd: '24-May-2026',
-    status: 'Paid',
-    settlementDetails: {
-      settlementDate: '24-Apr-2026',
-      amountPaid: '₹ 5,000',
-      recipientBank: 'HDFC Bank',
-      paymentMode: 'Bank Transfer',
-      referenceNumber: 'TXN9928341'
-    }
-  }
-];
+
 
 export default function InvoicesPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
   
-  // Search and Tab Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'All' | 'Paid' | 'Unpaid' | 'Cancel'>('All');
   
-  // Accordion Expand State
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
 
-  // Status Change Dialog State
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRecord | null>(null);
   const [editStatus, setEditStatus] = useState<'Paid' | 'Unpaid' | 'Cancel'>('Unpaid');
   
-  // Conditional Paid settlement fields
   const [payDate, setPayDate] = useState('');
   const [payMode, setPayMode] = useState<'Bank Transfer' | 'Cash' | 'Check' | 'UPI / QR' | ''>('Bank Transfer');
   const [payRef, setPayRef] = useState('');
   const [payAmt, setPayAmt] = useState('');
   const [payBank, setPayBank] = useState('');
 
-  // Email Dialog State
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailInvoice, setEmailInvoice] = useState<InvoiceRecord | null>(null);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
 
-  // PDF Dialog State
   const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
   const [pdfInvoice, setPdfInvoice] = useState<InvoiceRecord | null>(null);
 
-  // Delete Dialog State
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingInvoice, setDeletingInvoice] = useState<InvoiceRecord | null>(null);
 
-  // Sync to Storage
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     setIsMounted(true);
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('northgate_invoices');
-      if (stored) {
-        try {
-          setInvoices(JSON.parse(stored));
-        } catch (e) {
-          console.error('Failed to parse invoices:', e);
-          initializeSeedInvoices();
+    const fetchInvoices = async () => {
+      try {
+        const response = await fetch('/api/invoices');
+        if (response.ok) {
+          const data = await response.json();
+          setInvoices(data);
         }
-      } else {
-        initializeSeedInvoices();
+      } catch (error) {
+        console.error('Failed to fetch invoices:', error);
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
+    fetchInvoices();
   }, []);
-
-  const initializeSeedInvoices = () => {
-    setInvoices(SEED_INVOICES);
-    localStorage.setItem('northgate_invoices', JSON.stringify(SEED_INVOICES));
-  };
-
-  const saveInvoices = (updatedList: InvoiceRecord[]) => {
-    setInvoices(updatedList);
-    localStorage.setItem('northgate_invoices', JSON.stringify(updatedList));
-  };
 
   const toggleRow = (id: string) => {
     if (expandedInvoiceId === id) {
@@ -199,16 +147,11 @@ export default function InvoicesPage() {
     }
   };
 
-  // ==============================================================
-  // ACTIONS / DIALOG HANDLERS
-  // ==============================================================
   
-  // Status Modal Activation
   const triggerStatusEdit = (inv: InvoiceRecord) => {
     setSelectedInvoice(inv);
     setEditStatus(inv.status);
     
-    // Fill with existing settlement data if Paid
     if (inv.status === 'Paid' && inv.settlementDetails) {
       setPayDate(inv.settlementDetails.settlementDate);
       setPayMode(inv.settlementDetails.paymentMode);
@@ -225,55 +168,48 @@ export default function InvoicesPage() {
     setStatusDialogOpen(true);
   };
 
-  // Status Save Submission
-  const handleStatusSubmit = (e: React.FormEvent) => {
+  const handleStatusSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedInvoice) return;
 
-    // Validation for Conditional Paid Fields
     if (editStatus === 'Paid') {
-      if (!payDate.trim()) {
-        toast.error('Payment Date is required');
-        return;
-      }
-      if (!payAmt.trim()) {
-        toast.error('Settlement Amount is required');
-        return;
-      }
-      if (!payBank.trim()) {
-        toast.error('Recipient Bank is required');
-        return;
-      }
-      if (!payRef.trim()) {
-        toast.error('Transaction Reference Number is required');
-        return;
-      }
+      if (!payDate.trim()) { toast.error('Payment Date is required'); return; }
+      if (!payAmt.trim()) { toast.error('Settlement Amount is required'); return; }
+      if (!payBank.trim()) { toast.error('Recipient Bank is required'); return; }
+      if (!payRef.trim()) { toast.error('Transaction Reference Number is required'); return; }
     }
 
-    const updated = invoices.map((inv) => {
-      if (inv.id === selectedInvoice.id) {
-        return {
-          ...inv,
-          status: editStatus,
-          settlementDetails: editStatus === 'Paid' ? {
-            settlementDate: payDate,
-            amountPaid: payAmt,
-            recipientBank: payBank,
-            paymentMode: payMode,
-            referenceNumber: payRef
-          } : null
-        };
-      }
-      return inv;
-    });
+    try {
+      const settlementDetails = editStatus === 'Paid' ? {
+        settlementDate: payDate,
+        amountPaid: payAmt,
+        recipientBank: payBank,
+        paymentMode: payMode,
+        referenceNumber: payRef
+      } : null;
 
-    saveInvoices(updated);
-    toast.success(`Invoice "${selectedInvoice.invoiceNumber}" status set to ${editStatus}`);
-    setStatusDialogOpen(false);
-    setSelectedInvoice(null);
+      await fetch(`/api/invoices/${selectedInvoice.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: editStatus, settlementDetails })
+      });
+
+      const updated = invoices.map((inv) => {
+        if (inv.id === selectedInvoice.id) {
+          return { ...inv, status: editStatus, settlementDetails };
+        }
+        return inv;
+      });
+
+      setInvoices(updated);
+      toast.success(`Invoice "${selectedInvoice.invoiceNumber}" status set to ${editStatus}`);
+      setStatusDialogOpen(false);
+      setSelectedInvoice(null);
+    } catch (error) {
+      toast.error('Failed to update status');
+    }
   };
 
-  // Email Action Workflow
   const triggerSendEmail = (inv: InvoiceRecord) => {
     setEmailInvoice(inv);
     setRecipientEmail(inv.clientEmail);
@@ -282,7 +218,7 @@ export default function InvoicesPage() {
     setEmailDialogOpen(true);
   };
 
-  const handleSendEmailSubmit = (e: React.FormEvent) => {
+  const handleSendEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!emailInvoice) return;
 
@@ -291,13 +227,20 @@ export default function InvoicesPage() {
       return;
     }
 
-    // Success dispatch action mockup
-    toast.success(`Invoice email successfully dispatched to ${recipientEmail}`);
-    setEmailDialogOpen(false);
-    setEmailInvoice(null);
+    try {
+      await fetch(`/api/invoices/${emailInvoice.id}/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: recipientEmail, subject: emailSubject, body: emailBody })
+      });
+      toast.success(`Invoice email successfully dispatched to ${recipientEmail}`);
+      setEmailDialogOpen(false);
+      setEmailInvoice(null);
+    } catch (error) {
+      toast.error('Failed to send email');
+    }
   };
 
-  // PDF Action Workflow
   const triggerPdfDownload = (inv: InvoiceRecord) => {
     setPdfInvoice(inv);
     setPdfDialogOpen(true);
@@ -306,7 +249,6 @@ export default function InvoicesPage() {
   const handlePdfDownloadSubmit = () => {
     if (!pdfInvoice) return;
     
-    // Simulate generation and browser download
     const link = document.createElement('a');
     link.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(`Invoice: ${pdfInvoice.invoiceNumber}\nAmount: ${pdfInvoice.billingAmount}\nCompany: ${pdfInvoice.companyName}`);
     link.setAttribute('download', `${pdfInvoice.invoiceNumber.replace(/\//g, '_')}.pdf`);
@@ -319,23 +261,24 @@ export default function InvoicesPage() {
     setPdfInvoice(null);
   };
 
-  // Delete Action Workflow
-  const handleDeleteSubmit = () => {
+  const handleDeleteSubmit = async () => {
     if (!deletingInvoice) return;
 
-    const updated = invoices.filter(inv => inv.id !== deletingInvoice.id);
-    saveInvoices(updated);
-    toast.success(`Invoice "${deletingInvoice.invoiceNumber}" has been permanently deleted`);
-    setDeleteDialogOpen(false);
-    setDeletingInvoice(null);
-    if (expandedInvoiceId === deletingInvoice.id) {
-      setExpandedInvoiceId(null);
+    try {
+      await fetch(`/api/invoices/${deletingInvoice.id}`, { method: 'DELETE' });
+      const updated = invoices.filter(inv => inv.id !== deletingInvoice.id);
+      setInvoices(updated);
+      toast.success(`Invoice "${deletingInvoice.invoiceNumber}" has been permanently deleted`);
+      setDeleteDialogOpen(false);
+      setDeletingInvoice(null);
+      if (expandedInvoiceId === deletingInvoice.id) {
+        setExpandedInvoiceId(null);
+      }
+    } catch (error) {
+      toast.error('Failed to delete invoice');
     }
   };
 
-  // ==============================================================
-  // RECORD SEARCH & COUNTS COMPUTATION
-  // ==============================================================
   const counts = useMemo(() => {
     return {
       All: invoices.length,
@@ -375,7 +318,6 @@ export default function InvoicesPage() {
     <DashboardLayout>
       <div data-testid="invoice-management-page" className="space-y-0">
         
-        {/* Page Header */}
         <div className="mb-5">
           <Header
             title="Invoice Ledger"
@@ -383,12 +325,10 @@ export default function InvoicesPage() {
           />
         </div>
 
-        {/* Unified Search & Filter Header Container */}
         <div 
           className="p-4 border bg-white flex flex-col md:flex-row gap-3 items-stretch md:items-center"
           style={{ borderColor: '#E5E7EB', borderTopLeftRadius: '12px', borderTopRightRadius: '12px', borderBottomWidth: '0' }}
         >
-          {/* Search bar on the left */}
           <div className="flex-1 max-w-sm">
             <SearchBar
               placeholder="Search invoice number, plan, amount..."
@@ -396,7 +336,6 @@ export default function InvoicesPage() {
             />
           </div>
 
-          {/* Dynamic Tab Selectors on the Right */}
           <div className="flex flex-wrap items-center gap-1 sm:ml-auto">
             {(['All', 'Paid', 'Unpaid', 'Cancel'] as const).map((tab) => {
               const isActive = activeTab === tab;
@@ -428,7 +367,6 @@ export default function InvoicesPage() {
           </div>
         </div>
 
-        {/* Invoice Grid Table */}
         <div 
           className="bg-white border overflow-hidden" 
           style={{ borderColor: '#E5E7EB', borderTopLeftRadius: '0', borderTopRightRadius: '0', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}
@@ -448,7 +386,13 @@ export default function InvoicesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredInvoices.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-slate-500">
+                    Loading invoices...
+                  </td>
+                </tr>
+              ) : filteredInvoices.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-6 py-12 text-center text-sm text-slate-500">
                     No transactions found matching the selected filter criteria.
@@ -461,25 +405,21 @@ export default function InvoicesPage() {
                   
                   return (
                     <Fragment key={inv.id}>
-                      {/* Main Invoice Row */}
                       <tr 
                         className="hover:bg-slate-50/40 bg-white border-b transition-colors cursor-pointer select-none"
                         style={{ borderColor: '#F1F5F9' }}
                         onClick={() => toggleRow(inv.id)}
                       >
-                        {/* Expansion arrow indicator */}
                         <td className="px-6 py-4 text-center w-12 text-slate-400">
                           <div className="flex justify-center">
                             {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </div>
                         </td>
 
-                        {/* SR.NO */}
                         <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs font-semibold w-16">
                           {displayIndex}
                         </td>
 
-                        {/* COMPANY DETAILS */}
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-0.5">
                             <span className="font-semibold text-slate-900 text-[13px] flex items-center gap-1.5">
@@ -493,7 +433,6 @@ export default function InvoicesPage() {
                           </div>
                         </td>
 
-                        {/* INVOICE DATE */}
                         <td className="px-6 py-4 w-36 text-[13px] text-slate-650 font-medium whitespace-nowrap">
                           <span className="flex items-center gap-1.5">
                             <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -501,12 +440,10 @@ export default function InvoicesPage() {
                           </span>
                         </td>
 
-                        {/* INVOICE NUMBER */}
                         <td className="px-6 py-4 w-44 text-[13px] text-slate-650 font-medium whitespace-nowrap">
                           {inv.invoiceNumber}
                         </td>
 
-                        {/* PLAN & VALIDITY */}
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-0.5">
                             <span className="font-semibold text-slate-900 text-[13px]">
@@ -518,20 +455,17 @@ export default function InvoicesPage() {
                           </div>
                         </td>
 
-                        {/* BILLING AMOUNT */}
                         <td className="px-6 py-4 w-32 text-[13px] text-slate-650 font-medium whitespace-nowrap">
                           {inv.billingAmount}
                         </td>
 
-                        {/* STATUS BADGE */}
                         <td className="px-6 py-4 w-28">
                           <StatusBadge status={inv.status} />
                         </td>
 
-                        {/* ACTION CHANGER (Hides all options inside a premium 3-dot Popover) */}
                         <td 
                           className="px-6 py-4 text-center w-28"
-                          onClick={(e) => e.stopPropagation()} // Prevent trigger row click accordion expansion
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <Popover>
                             <PopoverTrigger asChild>
@@ -583,7 +517,6 @@ export default function InvoicesPage() {
                         </td>
                       </tr>
 
-                      {/* Expanded Drawer Accordion Row (Fully Legal HTML Structure) */}
                       {isExpanded && (
                         <tr className="bg-slate-50/50">
                           <td colSpan={9} className="p-5 pl-18 border-b" style={{ borderColor: '#EEF2F6' }}>
@@ -641,11 +574,7 @@ export default function InvoicesPage() {
           </table>
         </div>
 
-        {/* ============================================================== */}
-        {/* MODAL DIALOG WORKFLOWS                                        */}
-        {/* ============================================================== */}
 
-        {/* A. UPDATE STATUS DIALOG */}
         <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
           <DialogContent className="sm:max-w-2xl bg-white border border-slate-250 p-6 shadow-xl rounded-xl z-[100] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -660,7 +589,6 @@ export default function InvoicesPage() {
 
             <form onSubmit={handleStatusSubmit} className="space-y-5 py-2">
               
-              {/* Radio selector group */}
               <div className="space-y-2">
                 <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Select Status</Label>
                 <div className="flex items-center gap-6">
@@ -682,7 +610,6 @@ export default function InvoicesPage() {
                 </div>
               </div>
 
-              {/* Conditional Bank Settlement Input Fields (Visible only if Paid selected) */}
               {editStatus === 'Paid' && (
                 <div className="pt-4 border-t border-dashed border-slate-200 space-y-4 animate-none">
                   <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -691,7 +618,6 @@ export default function InvoicesPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     
-                    {/* Payment Date */}
                     <div className="flex flex-col gap-1.5">
                       <Label htmlFor="pay-date" className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Payment Date</Label>
                       <Input 
@@ -705,7 +631,6 @@ export default function InvoicesPage() {
                       />
                     </div>
 
-                    {/* Settlement Amount */}
                     <div className="flex flex-col gap-1.5">
                       <Label htmlFor="pay-amt" className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Amount Paid</Label>
                       <Input 
@@ -719,7 +644,6 @@ export default function InvoicesPage() {
                       />
                     </div>
 
-                    {/* Recipient Bank */}
                     <div className="flex flex-col gap-1.5">
                       <Label htmlFor="pay-bank" className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Recipient Bank</Label>
                       <Input 
@@ -732,7 +656,6 @@ export default function InvoicesPage() {
                       />
                     </div>
 
-                    {/* Payment Mode */}
                     <div className="flex flex-col gap-1.5">
                       <Label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Payment Mode</Label>
                       <Select 
@@ -749,7 +672,6 @@ export default function InvoicesPage() {
                       </Select>
                     </div>
 
-                    {/* Reference Number */}
                     <div className="flex flex-col gap-1.5 md:col-span-2">
                       <Label htmlFor="pay-ref" className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Transaction Reference Number</Label>
                       <Input 
@@ -766,7 +688,6 @@ export default function InvoicesPage() {
                 </div>
               )}
 
-              {/* Dialog Action Buttons */}
               <DialogFooter className="pt-4 border-t border-slate-100 gap-2">
                 <Button 
                   type="button" 
@@ -788,7 +709,6 @@ export default function InvoicesPage() {
           </DialogContent>
         </Dialog>
 
-        {/* B. SEND EMAIL WORKFLOW DIALOG */}
         <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
           <DialogContent className="sm:max-w-2xl bg-white border border-slate-250 p-6 shadow-xl rounded-xl z-[150] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -803,7 +723,6 @@ export default function InvoicesPage() {
 
             <form onSubmit={handleSendEmailSubmit} className="space-y-4 pt-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Recipient */}
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Recipient</Label>
                   <Select value="default">
@@ -821,7 +740,6 @@ export default function InvoicesPage() {
                   </Select>
                 </div>
 
-                {/* From Signature */}
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">From</Label>
                   <Select value="default">
@@ -841,7 +759,6 @@ export default function InvoicesPage() {
                 </div>
               </div>
 
-              {/* Subject */}
               <div className="space-y-1.5">
                 <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Subject</Label>
                 <Input
@@ -853,7 +770,6 @@ export default function InvoicesPage() {
                 />
               </div>
 
-              {/* Message Editor Container with formatting toolbar mock */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Message</Label>
@@ -872,7 +788,6 @@ export default function InvoicesPage() {
                 </div>
                 
                 <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
-                  {/* Rich Editor formatting Toolbar */}
                   <div className="border-b border-slate-200 px-3 py-1.5 flex items-center gap-0.5 overflow-x-auto bg-slate-50/50">
                     <button type="button" className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded transition-colors text-xs font-semibold w-7 h-7 flex items-center justify-center"><Bold className="h-4 w-4" /></button>
                     <button type="button" className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded transition-colors text-xs font-semibold w-7 h-7 flex items-center justify-center"><Italic className="h-4 w-4" /></button>
@@ -891,7 +806,6 @@ export default function InvoicesPage() {
                     <button type="button" className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded transition-colors text-xs font-semibold w-7 h-7 flex items-center justify-center"><Redo className="h-4 w-4" /></button>
                   </div>
                   
-                  {/* Actual Editable text block */}
                   <textarea
                     className="w-full border-0 focus-visible:ring-0 rounded-none min-h-[180px] resize-none text-xs text-slate-700 p-3 leading-relaxed focus:outline-hidden"
                     value={emailBody}
@@ -902,7 +816,6 @@ export default function InvoicesPage() {
                 </div>
               </div>
 
-              {/* Dialog Footer Actions */}
               <DialogFooter className="pt-3 border-t border-slate-100 gap-2 sm:space-x-0">
                 <Button 
                   type="button" 
@@ -936,7 +849,6 @@ export default function InvoicesPage() {
           </DialogContent>
         </Dialog>
 
-        {/* C. DOWNLOAD PDF CONFIRMATION DIALOG */}
         <Dialog open={pdfDialogOpen} onOpenChange={setPdfDialogOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-slate-250 p-6 shadow-xl rounded-xl z-[150]">
             <DialogHeader>
@@ -967,7 +879,6 @@ export default function InvoicesPage() {
           </DialogContent>
         </Dialog>
 
-        {/* D. DELETE INVOICE WARNING DIALOG */}
         <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-slate-250 p-6 shadow-xl rounded-xl z-[150]">
             <DialogHeader>

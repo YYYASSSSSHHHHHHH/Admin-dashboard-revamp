@@ -58,7 +58,6 @@ export default function Dashboard() {
   const overdueCount = MEMBERS.filter((m) => m.paymentStatus === "overdue").length;
   const pendingCount = MEMBERS.filter((m) => m.paymentStatus === "pending").length;
 
-  // Aggregate recent activity across all members
   const recentActivity = MEMBERS.flatMap((m) =>
     m.timeline.map((e) => ({ ...e, member: m }))
   )
@@ -116,7 +115,6 @@ export default function Dashboard() {
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Member preview */}
         <div className="lg:col-span-7 bg-white border border-slate-200/80 rounded-xl shadow-sm">
           <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
             <div>
@@ -173,7 +171,6 @@ export default function Dashboard() {
           </ul>
         </div>
 
-        {/* Recent activity */}
         <div className="lg:col-span-5 bg-white border border-slate-200/80 rounded-xl shadow-sm">
           <div className="px-6 py-5 border-b border-slate-100">
             <h2 className="font-display text-lg font-semibold text-slate-900 tracking-tight">

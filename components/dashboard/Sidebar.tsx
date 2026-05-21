@@ -27,7 +27,6 @@ import {
 export function Sidebar() {
   const pathname = usePathname();
 
-  // Closed by default, opens dynamically
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     billing: false,
     communication: false,
@@ -35,10 +34,8 @@ export function Sidebar() {
     settings: false,
   });
 
-  // Track the active nested sub-route to drive active parent headers
   const [activeRoute, setActiveRoute] = useState<string>('');
 
-  // Expand parent accordions on initial mount if path matches a child
   useEffect(() => {
     if (pathname) {
       setActiveRoute(pathname);
@@ -62,7 +59,6 @@ export function Sidebar() {
     setActiveRoute(href);
   };
 
-  // Main direct routes (Dashboard, Members) turn black when matched
   const getLinkClass = (href: string) => {
     const isActive = activeRoute === href || (href !== '/' && activeRoute.startsWith(href));
     return `flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs transition-all duration-150 cursor-pointer ${isActive
@@ -71,7 +67,6 @@ export function Sidebar() {
       }`;
   };
 
-  // Dropdown section helper: checks if any of its children are currently active
   const isSectionActive = (section: string) => {
     if (section === 'billing') {
       return activeRoute === '/plans' || activeRoute === '/membership-label' || activeRoute === '/invoices';
@@ -88,7 +83,6 @@ export function Sidebar() {
     return false;
   };
 
-  // Dropdown parent header class: turns black ONLY if a child inside it is active
   const getHeaderClass = (section: string) => {
     const isActive = isSectionActive(section);
     return `w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs transition-all duration-150 cursor-pointer ${isActive
@@ -97,7 +91,6 @@ export function Sidebar() {
       }`;
   };
 
-  // Child sub-link class: active turns soft dark tint with bold text
   const getSubLinkClass = (href: string) => {
     const isActive = activeRoute === href;
     return `flex items-center gap-2.5 py-2 px-3 rounded-md text-[11px] transition-all duration-150 cursor-pointer ${isActive
@@ -111,7 +104,6 @@ export function Sidebar() {
       data-testid="sidebar"
       className="hidden lg:flex w-[240px] shrink-0 h-screen sticky top-0 flex-col bg-white border-r border-slate-200/80 shadow-[1px_0_4px_rgba(0,0,0,0.01)]"
     >
-      {/* Brand Header */}
       <div className="px-5 py-6 border-b border-slate-100/80">
         <div className="flex items-center gap-2.5">
           <div className="h-9 w-9 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-sm">
@@ -128,15 +120,12 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation Links Scroll Area */}
       <nav className="flex-1 px-3 py-4 flex flex-col gap-1.5 overflow-y-auto select-none">
 
-        {/* Workspace Category Title */}
         <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 px-3 mb-1">
           Navigation
         </div>
 
-        {/* Dashboard */}
         <Link
           href="/"
           onClick={() => handleSubLinkClick('/')}
@@ -147,7 +136,6 @@ export function Sidebar() {
           <span>Dashboard</span>
         </Link>
 
-        {/* Members */}
         <Link
           href="/members"
           onClick={() => handleSubLinkClick('/members')}
@@ -158,7 +146,6 @@ export function Sidebar() {
           <span>Members</span>
         </Link>
 
-        {/* Members & Billing Collapsible Accordion */}
         <div className="space-y-0.5">
           <button
             onClick={() => toggleSection('billing')}
@@ -175,7 +162,6 @@ export function Sidebar() {
             )}
           </button>
 
-          {/* Children items with tree line vertical border styling */}
           <div
             className={`pl-4 ml-5 border-l border-slate-100 space-y-1.5 overflow-hidden transition-all duration-350 ease-in-out ${openSections.billing ? 'max-h-40 py-1.5 opacity-100' : 'max-h-0 py-0 opacity-0 pointer-events-none'
               }`}
@@ -210,7 +196,6 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* Communication Collapsible Accordion */}
         <div className="space-y-0.5 mt-1">
           <button
             onClick={() => toggleSection('communication')}
@@ -252,7 +237,6 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* Request Collapsible Accordion */}
         <div className="space-y-0.5 mt-1">
           <button
             onClick={() => toggleSection('request')}
@@ -294,7 +278,6 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* Settings Collapsible Accordion */}
         <div className="space-y-0.5 mt-1">
           <button
             onClick={() => toggleSection('settings')}
@@ -338,7 +321,6 @@ export function Sidebar() {
 
       </nav>
 
-      {/* User Footer Profile */}
       <div className="px-4 py-4 border-t border-slate-100">
         <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50/80 transition-colors cursor-default">
           <div className="h-8 w-8 rounded-full bg-slate-950 text-white flex items-center justify-center text-xs font-semibold shadow-sm border border-slate-900/10">

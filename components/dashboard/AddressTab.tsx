@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ADDRESS_TITLES } from '@/lib/mockData';
+import { ADDRESS_TITLES } from '@/lib/constants';
 import { toast } from 'sonner';
 
 const MAX_ADDRESSES = 3;

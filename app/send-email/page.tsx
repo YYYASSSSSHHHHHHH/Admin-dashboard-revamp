@@ -80,7 +80,6 @@ export default function SendEmailPage() {
   const [isSending, setIsSending] = useState(false);
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
 
-  // loadTemplatesByCategory — filters sidebar template list by selected category
   useEffect(() => {
     const catId = Number(selectedCategoryId);
     if (catId === 0) {
@@ -90,7 +89,6 @@ export default function SendEmailPage() {
     }
   }, [selectedCategoryId, allTemplates]);
 
-  // selectTemplate — populates composer fields and shows toast
   const selectTemplate = (template: Template) => {
     setEmailSubject(template.subject);
     setEmailBody(template.body);
@@ -98,12 +96,10 @@ export default function SendEmailPage() {
     toast.success('Template loaded');
   };
 
-  // saveDraft — shows success toast
   const saveDraft = () => {
     toast.success('Draft saved successfully.');
   };
 
-  // sendEmail — validates fields, simulates 1.5s send, resets on success
   const sendEmail = () => {
     if (!emailTo.trim() || !emailSubject.trim() || !emailBody.trim()) {
       toast.error('All fields (To, Subject, and Body) are required.');
@@ -124,13 +120,11 @@ export default function SendEmailPage() {
     <DashboardLayout>
       <div data-testid="send-email-page">
 
-        {/* Page Header — same Header component used on /members and /plans */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-5">
           <Header
             title="Send Email Notification"
             subtitle="Draft custom notifications or launch predefined templates to members."
           />
-          {/* Action Buttons — top-right, same Button component as rest of site */}
           <div className="flex items-center gap-2 shrink-0 pb-8">
             <Button
               id="btn-save-draft"
@@ -163,17 +157,14 @@ export default function SendEmailPage() {
           </div>
         </div>
 
-        {/* Two-Column Work Area */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-          {/* LEFT — Templates Sidebar (280px / col-span-4) */}
           <div className="lg:col-span-4 bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-100">
               <h3 className="text-xs font-bold text-slate-900 tracking-wide uppercase">Templates Catalog</h3>
               <p className="text-[10px] text-slate-400 font-medium mt-0.5">Select a category to filter layouts</p>
             </div>
 
-            {/* Category Selector — uses Select component same as /plans */}
             <div className="p-3 border-b border-slate-100">
               <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
                 <SelectTrigger className="h-9 w-full bg-slate-50/50 border-slate-200 text-xs">
@@ -189,7 +180,6 @@ export default function SendEmailPage() {
               </Select>
             </div>
 
-            {/* Scrollable Template List */}
             <div className="divide-y divide-slate-100 max-h-[380px] overflow-y-auto">
               {filteredTemplates.length === 0 ? (
                 <div className="p-6 text-center text-slate-400 text-[11px]">
@@ -221,7 +211,6 @@ export default function SendEmailPage() {
             </div>
           </div>
 
-          {/* RIGHT — Email Composer (col-span-8) */}
           <div className="lg:col-span-8 bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-100">
               <h3 className="text-xs font-bold text-slate-900 tracking-wide uppercase">Email Composer</h3>
@@ -229,7 +218,6 @@ export default function SendEmailPage() {
             </div>
 
             <div className="p-5 space-y-4">
-              {/* To field — uses Input component same as /plans */}
               <div className="grid grid-cols-[52px_1fr] items-center gap-3">
                 <Label htmlFor="email-to" className="text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">
                   To:
@@ -245,7 +233,6 @@ export default function SendEmailPage() {
                 />
               </div>
 
-              {/* Subject field */}
               <div className="grid grid-cols-[52px_1fr] items-center gap-3">
                 <Label htmlFor="email-subject" className="text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">
                   Subject:
@@ -261,9 +248,7 @@ export default function SendEmailPage() {
                 />
               </div>
 
-              {/* Rich Text Toolbar + Body Textarea */}
               <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
-                {/* Formatting Toolbar */}
                 <div className="border-b border-slate-200 px-3 py-1.5 flex items-center gap-0.5 overflow-x-auto bg-slate-50/50 select-none">
                   <button type="button" className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded transition-colors w-7 h-7 flex items-center justify-center"><Bold className="h-3.5 w-3.5" /></button>
                   <button type="button" className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded transition-colors w-7 h-7 flex items-center justify-center"><Italic className="h-3.5 w-3.5" /></button>
@@ -278,7 +263,6 @@ export default function SendEmailPage() {
                   <button type="button" className="p-1 text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded transition-colors w-7 h-7 flex items-center justify-center"><LinkIcon className="h-3.5 w-3.5" /></button>
                 </div>
 
-                {/* Body */}
                 <textarea
                   id="email-body"
                   className="w-full border-0 focus:outline-none min-h-[260px] resize-none text-xs text-slate-700 p-4 leading-relaxed bg-transparent focus:bg-white transition-colors"

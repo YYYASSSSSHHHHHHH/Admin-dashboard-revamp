@@ -7,9 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { formatDate } from '@/lib/mockData';
+import { formatDate } from '@/lib/constants';
 
-// Import standard Button
 import { Button as UIButton } from '@/components/ui/button';
 
 interface StampRecord {
@@ -28,7 +27,6 @@ interface StampTabProps {
 
 const AVAILABLE_BADGES = ['Identity', 'Email', 'Documents', 'Account'];
 
-// Elegant SVG Stamp Seals as Data URLs
 const STAMP_IMAGES: Record<string, string> = {
   Identity: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40"><circle cx="20" cy="20" r="18" fill="%23eff6ff" stroke="%232563eb" stroke-width="1.5"/><circle cx="20" cy="20" r="15" fill="none" stroke="%232563eb" stroke-width="0.5" stroke-dasharray="2,2"/><path d="M20 11a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm-6 16c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="%232563eb" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M25 18l2 2 4-4" stroke="%2310b981" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
   Email: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40"><circle cx="20" cy="20" r="18" fill="%23ecfdf5" stroke="%23059669" stroke-width="1.5"/><circle cx="20" cy="20" r="15" fill="none" stroke="%23059669" stroke-width="0.5" stroke-dasharray="2,2"/><rect x="12" y="14" width="16" height="12" rx="1.5" stroke="%23059669" stroke-width="1.5" fill="none"/><path d="M12 16l8 5 8-5" stroke="%23059669" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>`,
@@ -68,7 +66,6 @@ export function StampTab({ stamps, setStamps }: StampTabProps) {
     setStamps((prev) => [newStamp, ...prev]);
     toast.success('Verification stamp registered successfully!');
 
-    // Reset Form
     setSelectedBadges({
       Identity: false,
       Email: false,
@@ -82,7 +79,6 @@ export function StampTab({ stamps, setStamps }: StampTabProps) {
   const handleDeleteStamp = (id: string) => {
     setStamps((prev) => {
       const remaining = prev.filter((s) => s.id !== id);
-      // Re-index serials
       return remaining.map((s, idx) => ({
         ...s,
         serial: remaining.length - idx,
@@ -93,9 +89,7 @@ export function StampTab({ stamps, setStamps }: StampTabProps) {
 
   return (
     <div className="space-y-5" data-testid="stamp-tab">
-      {/* Table Card */}
       <div className="bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
-        {/* Table Controls */}
         <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4 bg-white">
           <div className="space-y-0.5">
             <h2 className="font-display text-xl font-semibold text-slate-900 tracking-tight">
@@ -121,7 +115,6 @@ export function StampTab({ stamps, setStamps }: StampTabProps) {
           </div>
         </div>
 
-        {/* High Density Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm" data-testid="stamp-table">
             <thead>
@@ -148,17 +141,14 @@ export function StampTab({ stamps, setStamps }: StampTabProps) {
                     data-testid={`stamp-row-${stamp.id}`}
                     className="hover:bg-slate-50/50 transition-colors"
                   >
-                    {/* Serial Number */}
                     <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-400">
                       #{stamp.serial}
                     </td>
 
-                    {/* Applied Date */}
                     <td className="px-6 py-4 whitespace-nowrap text-slate-900">
                       {formatDate(stamp.appliedDate)}
                     </td>
 
-                    {/* Badges Applied - Small Elegant Production Stamp Images */}
                     <td className="px-6 py-3">
                       <div className="flex flex-wrap gap-2.5">
                         {stamp.badges.map((b) => (
@@ -168,7 +158,6 @@ export function StampTab({ stamps, setStamps }: StampTabProps) {
                               alt={b}
                               className="h-8 w-8 transition-transform duration-200 hover:scale-110 active:scale-95 shrink-0"
                             />
-                            {/* Hover Tooltip */}
                             <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-slate-900 text-white text-[10px] font-bold px-2.5 py-1 rounded shadow-md whitespace-nowrap z-10">
                               {b} Verified
                             </span>
@@ -177,17 +166,14 @@ export function StampTab({ stamps, setStamps }: StampTabProps) {
                       </div>
                     </td>
 
-                    {/* Remark / Note */}
                     <td className="px-6 py-4 text-slate-650 max-w-xs truncate">
                       {stamp.remark}
                     </td>
 
-                    {/* Verified By */}
                     <td className="px-6 py-4 whitespace-nowrap text-slate-900">
                       {stamp.verifiedBy}
                     </td>
 
-                    {/* Actions */}
                     <td className="px-6 py-4 text-right whitespace-nowrap">
                       <UIButton
                         variant="ghost"
@@ -207,7 +193,6 @@ export function StampTab({ stamps, setStamps }: StampTabProps) {
         </div>
       </div>
 
-      {/* Add Stamp Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent data-testid="add-stamp-dialog" className="max-w-md">
           <DialogHeader>
@@ -221,7 +206,6 @@ export function StampTab({ stamps, setStamps }: StampTabProps) {
           </DialogHeader>
 
           <div className="space-y-4 pt-2">
-            {/* Badges Checklist */}
             <div className="space-y-2">
               <Label className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                 Verification Badges
@@ -256,7 +240,6 @@ export function StampTab({ stamps, setStamps }: StampTabProps) {
               </div>
             </div>
 
-            {/* Remark TextArea */}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="stamp-remark" className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                 Remark / Note
@@ -271,7 +254,6 @@ export function StampTab({ stamps, setStamps }: StampTabProps) {
               />
             </div>
 
-            {/* Modal Actions */}
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
               <UIButton
                 variant="outline"

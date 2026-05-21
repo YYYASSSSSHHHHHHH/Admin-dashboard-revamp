@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { formatDate } from '@/lib/mockData';
+import { formatDate } from '@/lib/constants';
 
 interface LoginRecord {
   id: string;
@@ -34,9 +34,7 @@ export function LoginLogTab({ logs }: LoginLogTabProps) {
 
   return (
     <div className="space-y-5" data-testid="login-log-tab">
-      {/* Table Card */}
       <div className="bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
-        {/* Table Controls */}
         <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4 bg-white">
           <div className="space-y-0.5">
             <h2 className="font-display text-xl font-semibold text-slate-900 tracking-tight">
@@ -48,7 +46,6 @@ export function LoginLogTab({ logs }: LoginLogTabProps) {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Search Input */}
             <div className="relative w-64">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
@@ -66,7 +63,6 @@ export function LoginLogTab({ logs }: LoginLogTabProps) {
           </div>
         </div>
 
-        {/* High Density Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm" data-testid="login-log-table">
             <thead>
@@ -93,32 +89,26 @@ export function LoginLogTab({ logs }: LoginLogTabProps) {
                     data-testid={`login-log-row-${log.serial}`}
                     className="hover:bg-slate-50/50 transition-colors"
                   >
-                    {/* Serial Number */}
                     <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-400">
                       #{log.serial}
                     </td>
 
-                    {/* Date & Time */}
                     <td className="px-6 py-4 whitespace-nowrap text-slate-900">
                       {formatDate(log.timestamp)}
                     </td>
 
-                    {/* IP Address */}
                     <td className="px-6 py-4 whitespace-nowrap text-slate-900">
                       {log.ipAddress}
                     </td>
 
-                    {/* Device ID */}
                     <td className="px-6 py-4 whitespace-nowrap text-slate-900">
                       {log.deviceId}
                     </td>
 
-                    {/* Geo Info */}
                     <td className="px-6 py-4 whitespace-nowrap text-slate-900">
                       {log.geoInfo}
                     </td>
 
-                    {/* MAC Address */}
                     <td className="px-6 py-4 whitespace-nowrap text-slate-900">
                       {log.macAddress}
                     </td>

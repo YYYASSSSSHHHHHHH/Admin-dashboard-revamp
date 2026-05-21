@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Header } from '@/components/dashboard/Header';
-import { relativeTime, MOCK_ACTIVITIES } from '@/lib/mockData';
+import { relativeTime, MOCK_ACTIVITIES } from '@/lib/constants';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 
 interface Member {
@@ -138,7 +138,6 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div data-testid="dashboard-page">
-        {/* Header Section */}
         <div className="mb-8">
           <Header
             title="Dashboard"
@@ -146,7 +145,6 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* KPIs Grid */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Kpi
             testid="kpi-members"
@@ -183,9 +181,7 @@ export default function Dashboard() {
           />
         </section>
 
-        {/* Content Section */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Recent Members */}
           <div className="lg:col-span-7 bg-white border border-slate-200/80 rounded-xl shadow-sm">
             <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
               <div>
@@ -236,7 +232,6 @@ export default function Dashboard() {
             </ul>
           </div>
 
-          {/* Recent Activity */}
           <div className="lg:col-span-5 bg-white border border-slate-200/80 rounded-xl shadow-sm">
             <div className="px-6 py-5 border-b border-slate-100">
               <h2 className="font-display text-lg font-semibold text-slate-900 tracking-tight">

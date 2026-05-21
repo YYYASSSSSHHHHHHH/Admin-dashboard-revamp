@@ -4,7 +4,7 @@
 @import 'tw-animate-css';
 
 :root {
-  --background: hsl(210 40% 98%); /* Matches f8fafc from body bg */
+  --background: hsl(210 40% 98%);
   --foreground: hsl(222.2 47.4% 11.2%);
   --card: hsl(0 0% 100%);
   --card-foreground: hsl(222.2 47.4% 11.2%);
@@ -72,7 +72,6 @@ code {
 }
 
 @layer base {
-  * {
     @apply border-border;
   }
   body {
@@ -80,7 +79,6 @@ code {
   }
 }
 
-/* Subtle scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -97,7 +95,6 @@ code {
   background: #cbd5e1;
 }
 
-/* Selection color */
 ::selection {
   background: #0f172a;
   color: #ffffff;

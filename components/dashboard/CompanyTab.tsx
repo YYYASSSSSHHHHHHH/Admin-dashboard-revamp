@@ -76,13 +76,11 @@ export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
       };
       reader.readAsDataURL(file);
     }
-    // Reset input so the same file can be uploaded again if needed
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  // Helper to determine if photo string is an image URL/data URL
   const isImage = (val?: string) => {
     if (!val) return false;
     return val.startsWith('http') || val.startsWith('/') || val.startsWith('data:');
@@ -161,7 +159,6 @@ export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Branding / Logo Editor */}
             <div className="md:col-span-2 border-b border-slate-100 pb-5 mb-1">
               <Field label="Company Logo">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-5 mt-2">

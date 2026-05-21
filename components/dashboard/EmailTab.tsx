@@ -26,9 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { formatDate, relativeTime } from '@/lib/mockData';
+import { formatDate, relativeTime } from '@/lib/constants';
 
-// Re-using the parent interface but augmenting it internally for display
 interface EmailRecord {
   id: string;
   serial: number;
@@ -286,7 +285,6 @@ export function EmailTab({ member, emails, setEmails }: EmailTabProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Compose Dialog */}
       <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
         <DialogContent className="sm:max-w-3xl h-[690px] max-h-[90vh] flex flex-col justify-between overflow-hidden p-0">
           <DialogHeader className="pt-6 px-6 pb-2">

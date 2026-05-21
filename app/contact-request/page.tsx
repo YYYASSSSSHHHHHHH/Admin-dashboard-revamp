@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { UserCheck } from 'lucide-react';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Header } from '@/components/dashboard/Header';
@@ -22,7 +22,7 @@ import {
 import { toast } from 'sonner';
 
 interface ContactRequestRecord {
-  id: string; // unique request ID
+  id: string;
   at: string;
   primaryName: string;
   primaryInitials: string;
@@ -36,50 +36,7 @@ interface ContactRequestRecord {
   status: string;
 }
 
-const DEFAULT_CONTACT_REQUESTS: ContactRequestRecord[] = [
-  {
-    id: 'req_001',
-    at: '2026-05-06T09:45:00Z',
-    primaryName: 'Vinod Gambtoo',
-    primaryInitials: 'VG',
-    companyName: 'GEC International Study Centre',
-    primaryMobile: '+91 98765 01234',
-    newContactName: 'Manoj Paryani',
-    newContactMobile: '+91 87654 98765',
-    newContactEmail: 'manoj@gec.com',
-    newContactDesignation: 'Manager',
-    location: 'Ahmedabad, Gujarat, India',
-    status: 'PENDING'
-  },
-  {
-    id: 'req_002',
-    at: '2026-05-05T11:20:00Z',
-    primaryName: 'Anita Desai',
-    primaryInitials: 'AD',
-    companyName: 'Desai Tech Solutions',
-    primaryMobile: '+91 98123 45678',
-    newContactName: 'Rohan Desai',
-    newContactMobile: '+91 90123 45678',
-    newContactEmail: 'rohan@desai.com',
-    newContactDesignation: 'Admin',
-    location: 'Mumbai, Maharashtra, India',
-    status: 'APPROVED'
-  },
-  {
-    id: 'req_003',
-    at: '2026-05-04T15:10:00Z',
-    primaryName: 'Karthik Rao',
-    primaryInitials: 'KR',
-    companyName: 'Rao Enterprises',
-    primaryMobile: '+91 99000 88888',
-    newContactName: 'Sneha Rao',
-    newContactMobile: '+91 99111 77777',
-    newContactEmail: 'sneha@raoent.com',
-    newContactDesignation: 'Staff',
-    location: 'Bangalore, Karnataka, India',
-    status: 'PENDING'
-  }
-];
+
 
 function formatDateDisplay(isoString: string) {
   const d = new Date(isoString);
@@ -96,20 +53,34 @@ function formatDateDisplay(isoString: string) {
 }
 
 export default function ContactRequestsPage() {
-  const [requests, setRequests] = useState<ContactRequestRecord[]>(DEFAULT_CONTACT_REQUESTS);
+  const [requests, setRequests] = useState<ContactRequestRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All statuses');
 
-  // Modal State
   const [selectedRequest, setSelectedRequest] = useState<ContactRequestRecord | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [tempStatus, setTempStatus] = useState<string>('PENDING');
 
   const statusOptions = ['All statuses', 'APPROVED', 'PENDING'];
 
-  // Filter logic
+  useEffect(() => {
+    const fetchContactRequests = async () => {
+      try {
+        const response = await fetch('/api/contact-requests');
+        if (response.ok) {
+          const data = await response.json();
+          setRequests(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch contact requests:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchContactRequests();
+  }, []);
   const filteredRequests = useMemo(() => {
     return requests.filter((r) => {
       const matchesSearch =
@@ -133,20 +104,30 @@ export default function ContactRequestsPage() {
     setModalOpen(true);
   };
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (!selectedRequest) return;
-    setRequests((prev) =>
-      prev.map((r) => (r.id === selectedRequest.id ? { ...r, status: tempStatus } : r))
-    );
-    const displayStatus = tempStatus.charAt(0) + tempStatus.slice(1).toLowerCase();
-    toast.success(`Contact request marked as ${displayStatus}.`);
-    setModalOpen(false);
+    
+    try {
+      await fetch(`/api/contact-requests/${selectedRequest.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: tempStatus })
+      });
+      
+      setRequests((prev) =>
+        prev.map((r) => (r.id === selectedRequest.id ? { ...r, status: tempStatus } : r))
+      );
+      const displayStatus = tempStatus.charAt(0) + tempStatus.slice(1).toLowerCase();
+      toast.success(`Contact request marked as ${displayStatus}.`);
+      setModalOpen(false);
+    } catch (error) {
+      toast.error('Failed to update request status');
+    }
   };
 
   return (
     <DashboardLayout>
       <div>
-        {/* Header */}
         <div className="mb-5">
           <Header
             title="Contact Requests"
@@ -154,7 +135,6 @@ export default function ContactRequestsPage() {
           />
         </div>
 
-        {/* Search and Filters — exact replicate of the members page filters wrapper */}
         <div
           className="p-4 border border-b-0 bg-white flex flex-col sm:flex-row gap-3 items-stretch sm:items-center"
           style={{ borderColor: '#E5E7EB', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}
@@ -172,7 +152,6 @@ export default function ContactRequestsPage() {
           />
         </div>
 
-        {/* Table — exact replicate of MembersTable & TableRow styling */}
         <div
           className="bg-white border overflow-hidden shadow-sm"
           style={{
@@ -196,7 +175,13 @@ export default function ContactRequestsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredRequests.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-500">
+                    Loading contact requests...
+                  </td>
+                </tr>
+              ) : filteredRequests.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-500">
                     No contact requests match your filters.
@@ -212,12 +197,10 @@ export default function ContactRequestsPage() {
                       className="border-b hover:bg-slate-55 transition-colors bg-white cursor-pointer select-none"
                       style={{ borderColor: '#F1F5F9' }}
                     >
-                      {/* SR.NO */}
                       <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs font-semibold">
                         {String(index + 1).padStart(2, '0')}
                       </td>
 
-                      {/* DATE & TIME */}
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
                           <span style={{ color: '#0F172A', fontSize: '13px', fontWeight: '600' }} className="whitespace-nowrap">
@@ -231,7 +214,6 @@ export default function ContactRequestsPage() {
                         </div>
                       </td >
 
-                      {/* NAME & COMPANY using standardized MemberAvatar */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <MemberAvatar initials={r.primaryInitials} />
@@ -242,12 +224,10 @@ export default function ContactRequestsPage() {
                         </div>
                       </td>
 
-                      {/* MOBILE */}
                       <td className="px-6 py-4 text-[13px] text-slate-650 font-medium whitespace-nowrap">
                         {r.primaryMobile}
                       </td>
 
-                      {/* NEW CONTACT NAME */}
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
                           <span style={{ color: '#0F172A', fontSize: '13px', fontWeight: '600' }} className="whitespace-nowrap">
@@ -259,12 +239,10 @@ export default function ContactRequestsPage() {
                         </div>
                       </td>
 
-                      {/* NEW CONTACT MOBILE */}
                       <td className="px-6 py-4 text-[13px] text-slate-650 font-medium whitespace-nowrap">
                         {r.newContactMobile}
                       </td>
 
-                      {/* STATUS Badge */}
                       <td className="px-6 py-4">
                         <StatusBadge status={r.status} />
                       </td>
@@ -276,7 +254,6 @@ export default function ContactRequestsPage() {
           </table>
         </div>
 
-        {/* Dialog Details Modal */}
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
           <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col overflow-hidden p-0 bg-white border border-slate-200">
             {selectedRequest && (
@@ -294,7 +271,6 @@ export default function ContactRequestsPage() {
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5">
-                  {/* Detailed Overview Grid */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Company Name</div>
@@ -327,7 +303,6 @@ export default function ContactRequestsPage() {
                     </div>
                   </div>
 
-                  {/* Status Radio Buttons Selector using pre-existing RadioGroup & Label */}
                   <div className="pt-4 border-t border-slate-100">
                     <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">Update Status</div>
                     <RadioGroup

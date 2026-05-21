@@ -47,7 +47,6 @@ code {
 }
 
 @layer base {
-    * {
         @apply border-border;
     }
     body {
@@ -55,7 +54,6 @@ code {
     }
 }
 
-/* Subtle scrollbar */
 ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
@@ -72,7 +70,6 @@ code {
     background: #cbd5e1;
 }
 
-/* Selection color */
 ::selection {
     background: #0f172a;
     color: #ffffff;

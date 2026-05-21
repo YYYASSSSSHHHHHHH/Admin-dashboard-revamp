@@ -39,14 +39,12 @@ import { FilterSelect } from '@/components/dashboard/FilterSelect';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { toast } from 'sonner';
 
-// Dynamic Feature Privilege Type
 interface FeaturePrivilege {
   key: string;
   type: 'yes' | 'no' | 'value';
   value: string;
 }
 
-// Membership Label Item
 interface MembershipLabel {
   id: string;
   labelName: string;
@@ -58,65 +56,7 @@ interface MembershipLabel {
   features: FeaturePrivilege[];
 }
 
-// 1. Preloaded Seed System Labels
-const SEED_LABELS: MembershipLabel[] = [
-  {
-    id: '04',
-    labelName: 'TK lite',
-    hexColor: '#4880FF',
-    planName: 'Tk-Lite',
-    planRate: 'Free Trial',
-    duration: '15 Days',
-    status: 'active',
-    features: [
-      { key: 'Daily Broadcast', type: 'value', value: '5' },
-      { key: 'Send to all', type: 'no', value: '' },
-      { key: 'Send within State', type: 'yes', value: '' },
-    ]
-  },
-  {
-    id: '03',
-    labelName: 'TK Standard',
-    hexColor: '#10b981',
-    planName: 'Standard',
-    planRate: '1000',
-    duration: '3 months',
-    status: 'active',
-    features: [
-      { key: 'Daily Broadcast', type: 'value', value: '50' },
-      { key: 'Send to all', type: 'yes', value: '' },
-      { key: 'Send within State', type: 'yes', value: '' },
-    ]
-  },
-  {
-    id: '02',
-    labelName: 'TK Premium',
-    hexColor: '#f59e0b',
-    planName: 'Premium',
-    planRate: '2000',
-    duration: '6 Months',
-    status: 'active',
-    features: [
-      { key: 'Daily Broadcast', type: 'value', value: '100' },
-      { key: 'Send to all', type: 'yes', value: '' },
-      { key: 'Send within State', type: 'yes', value: '' },
-    ]
-  },
-  {
-    id: '01',
-    labelName: 'TK-FREE',
-    hexColor: '#8b5cf6',
-    planName: 'PLAN',
-    planRate: 'Free',
-    duration: '15 Days',
-    status: 'active',
-    features: [
-      { key: 'Daily Broadcast', type: 'value', value: '2' },
-      { key: 'Send to all', type: 'no', value: '' },
-      { key: 'Send within State', type: 'no', value: '' },
-    ]
-  }
-];
+
 
 export default function MembershipLabelPage() {
   const [isMounted, setIsMounted] = useState(false);
@@ -124,7 +64,6 @@ export default function MembershipLabelPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All statuses');
 
-  // Dialog State - Create Label
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
   const [newPlanName, setNewPlanName] = useState('');
@@ -138,7 +77,6 @@ export default function MembershipLabelPage() {
     { key: 'Send within State', type: 'yes', value: '' }
   ]);
 
-  // Dialog State - Edit Label
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [editLabelName, setEditLabelName] = useState('');
@@ -149,44 +87,33 @@ export default function MembershipLabelPage() {
   const [editStatus, setEditStatus] = useState<'active' | 'inactive'>('active');
   const [editFeatures, setEditFeatures] = useState<FeaturePrivilege[]>([]);
 
-  // Dialog State - Delete Label
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingLabel, setDeletingLabel] = useState<MembershipLabel | null>(null);
 
-  // Initialize and Sync
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     setIsMounted(true);
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('northgate_membership_labels');
-      if (stored) {
-        try {
-          setLabels(JSON.parse(stored));
-        } catch (e) {
-          console.error('Failed to parse membership labels:', e);
-          initializeSeedData();
+    const fetchLabels = async () => {
+      try {
+        const response = await fetch('/api/membership-labels');
+        if (response.ok) {
+          const data = await response.json();
+          setLabels(data);
         }
-      } else {
-        initializeSeedData();
+      } catch (error) {
+        console.error('Failed to fetch membership labels:', error);
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
+    fetchLabels();
   }, []);
 
-  const initializeSeedData = () => {
-    setLabels(SEED_LABELS);
-    localStorage.setItem('northgate_membership_labels', JSON.stringify(SEED_LABELS));
-  };
-
-  const saveToStorage = (updatedList: MembershipLabel[]) => {
-    setLabels(updatedList);
-    localStorage.setItem('northgate_membership_labels', JSON.stringify(updatedList));
-  };
-
-  // Color verification helper
   const isHexValid = (color: string) => {
     return /^#[0-9A-Fa-f]{6}$|^#[0-9A-Fa-f]{3}$/.test(color);
   };
 
-  // Dynamic privilege row helpers
   const addFeatureRow = (isEdit: boolean) => {
     const emptyRow: FeaturePrivilege = { key: '', type: 'yes', value: '' };
     if (isEdit) {
@@ -221,63 +148,50 @@ export default function MembershipLabelPage() {
     else setNewFeatures(updated);
   };
 
-  // ==========================================
-  // CREATE / EDIT / DELETE ACTIONS
-  // ==========================================
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!newLabelName.trim()) {
-      toast.error('Label Name is required');
-      return;
-    }
-    if (!newPlanName.trim()) {
-      toast.error('Plan Name is required');
-      return;
-    }
-    if (!newPlanRate.trim()) {
-      toast.error('Plan Rate is required');
-      return;
-    }
-    if (!newDuration.trim()) {
-      toast.error('Duration is required');
-      return;
-    }
+    if (!newLabelName.trim()) { toast.error('Label Name is required'); return; }
+    if (!newPlanName.trim()) { toast.error('Plan Name is required'); return; }
+    if (!newPlanRate.trim()) { toast.error('Plan Rate is required'); return; }
+    if (!newDuration.trim()) { toast.error('Duration is required'); return; }
 
     const hexCode = isHexValid(newHexColor) ? newHexColor : '#e2e8f0';
 
-    // Auto-increment 2-digit ID
-    const maxIdVal = labels.length > 0 ? Math.max(...labels.map(l => parseInt(l.id))) + 1 : 1;
-    const nextIdStr = String(maxIdVal).padStart(2, '0');
+    try {
+      const response = await fetch('/api/membership-labels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          labelName: newLabelName.trim(),
+          hexColor: hexCode,
+          planName: newPlanName.trim(),
+          planRate: newPlanRate.trim(),
+          duration: newDuration.trim(),
+          status: newStatus,
+          features: newFeatures.filter(f => f.key.trim() !== '')
+        })
+      });
+      const createdLabel = await response.json();
+      
+      setLabels([createdLabel, ...labels]);
+      toast.success(`Label "${createdLabel.labelName}" created successfully`);
 
-    const newLabel: MembershipLabel = {
-      id: nextIdStr,
-      labelName: newLabelName.trim(),
-      hexColor: hexCode,
-      planName: newPlanName.trim(),
-      planRate: newPlanRate.trim(),
-      duration: newDuration.trim(),
-      status: newStatus,
-      features: newFeatures.filter(f => f.key.trim() !== '')
-    };
-
-    const updated = [newLabel, ...labels];
-    saveToStorage(updated);
-    toast.success(`Label "${newLabel.labelName}" created successfully`);
-
-    // Reset
-    setNewLabelName('');
-    setNewPlanName('');
-    setNewPlanRate('');
-    setNewDuration('');
-    setNewHexColor('#e2e8f0');
-    setNewStatus('active');
-    setNewFeatures([
-      { key: 'Daily Broadcast', type: 'value', value: '5' },
-      { key: 'Send to all', type: 'no', value: '' },
-      { key: 'Send within State', type: 'yes', value: '' }
-    ]);
-    setCreateDialogOpen(false);
+      setNewLabelName('');
+      setNewPlanName('');
+      setNewPlanRate('');
+      setNewDuration('');
+      setNewHexColor('#e2e8f0');
+      setNewStatus('active');
+      setNewFeatures([
+        { key: 'Daily Broadcast', type: 'value', value: '5' },
+        { key: 'Send to all', type: 'no', value: '' },
+        { key: 'Send within State', type: 'yes', value: '' }
+      ]);
+      setCreateDialogOpen(false);
+    } catch (error) {
+      toast.error('Failed to create label');
+    }
   };
 
   const triggerEdit = (lbl: MembershipLabel) => {
@@ -292,33 +206,22 @@ export default function MembershipLabelPage() {
     setEditDialogOpen(true);
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingLabelId) return;
 
-    if (!editLabelName.trim()) {
-      toast.error('Label Name is required');
-      return;
-    }
-    if (!editPlanName.trim()) {
-      toast.error('Plan Name is required');
-      return;
-    }
-    if (!editPlanRate.trim()) {
-      toast.error('Plan Rate is required');
-      return;
-    }
-    if (!editDuration.trim()) {
-      toast.error('Duration is required');
-      return;
-    }
+    if (!editLabelName.trim()) { toast.error('Label Name is required'); return; }
+    if (!editPlanName.trim()) { toast.error('Plan Name is required'); return; }
+    if (!editPlanRate.trim()) { toast.error('Plan Rate is required'); return; }
+    if (!editDuration.trim()) { toast.error('Duration is required'); return; }
 
     const hexCode = isHexValid(editHexColor) ? editHexColor : '#e2e8f0';
 
-    const updated = labels.map((l) => {
-      if (l.id === editingLabelId) {
-        return {
-          ...l,
+    try {
+      const response = await fetch(`/api/membership-labels/${editingLabelId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           labelName: editLabelName.trim(),
           hexColor: hexCode,
           planName: editPlanName.trim(),
@@ -326,27 +229,32 @@ export default function MembershipLabelPage() {
           duration: editDuration.trim(),
           status: editStatus,
           features: editFeatures.filter(f => f.key.trim() !== '')
-        };
-      }
-      return l;
-    });
+        })
+      });
+      const updatedLabel = await response.json();
 
-    saveToStorage(updated);
-    toast.success('Label settings saved successfully');
-    setEditDialogOpen(false);
-    setEditingLabelId(null);
+      setLabels(labels.map(l => l.id === editingLabelId ? updatedLabel : l));
+      toast.success('Label settings saved successfully');
+      setEditDialogOpen(false);
+      setEditingLabelId(null);
+    } catch (error) {
+      toast.error('Failed to update label');
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deletingLabel) return;
-    const updated = labels.filter(l => l.id !== deletingLabel.id);
-    saveToStorage(updated);
-    toast.success(`Label "${deletingLabel.labelName}" deleted successfully`);
-    setDeleteDialogOpen(false);
-    setDeletingLabel(null);
+    try {
+      await fetch(`/api/membership-labels/${deletingLabel.id}`, { method: 'DELETE' });
+      setLabels(labels.filter(l => l.id !== deletingLabel.id));
+      toast.success(`Label "${deletingLabel.labelName}" deleted successfully`);
+      setDeleteDialogOpen(false);
+      setDeletingLabel(null);
+    } catch (error) {
+      toast.error('Failed to delete label');
+    }
   };
 
-  // Filter and Search logic
   const filteredLabels = useMemo(() => {
     return labels.filter((lbl) => {
       const query = searchQuery.toLowerCase();
@@ -366,7 +274,6 @@ export default function MembershipLabelPage() {
     });
   }, [labels, searchQuery, statusFilter]);
 
-  // Counts for status tabs/filters
   const counts = useMemo(() => {
     return {
       all: labels.length,
@@ -391,7 +298,6 @@ export default function MembershipLabelPage() {
     <DashboardLayout>
       <div data-testid="membership-labels-page" className="space-y-0">
         
-        {/* Page Header */}
         <div className="mb-5">
           <Header
             title="App Membership Label"
@@ -399,7 +305,6 @@ export default function MembershipLabelPage() {
           />
         </div>
 
-        {/* White Container Search & Action Section */}
         <div 
           className="p-4 border bg-white flex flex-col sm:flex-row gap-3 items-stretch sm:items-center"
           style={{ borderColor: '#E5E7EB', borderTopLeftRadius: '12px', borderTopRightRadius: '12px', borderBottomWidth: '0' }}
@@ -409,7 +314,6 @@ export default function MembershipLabelPage() {
             onSearch={setSearchQuery}
           />
           
-          {/* Status Filter Dropdown */}
           <FilterSelect
             label="All statuses"
             options={statusOptions}
@@ -445,7 +349,13 @@ export default function MembershipLabelPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredLabels.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-500">
+                    Loading membership labels...
+                  </td>
+                </tr>
+              ) : filteredLabels.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-500">
                     No membership labels found matching criteria.
@@ -460,12 +370,10 @@ export default function MembershipLabelPage() {
                       className="border-b hover:bg-slate-50/70 transition-colors bg-white"
                       style={{ borderColor: '#F1F5F9' }}
                     >
-                      {/* SR.NO */}
                       <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs font-semibold">
                         {lbl.id}
                       </td>
 
-                      {/* LABEL NAME */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2.5">
                           <span
@@ -478,27 +386,22 @@ export default function MembershipLabelPage() {
                         </div>
                       </td>
 
-                      {/* PLAN NAME */}
                       <td className="px-6 py-4 text-[13px] text-slate-650 font-medium whitespace-nowrap">
                         {lbl.planName}
                       </td>
 
-                      {/* PLAN RATE */}
                       <td className="px-6 py-4 text-[13px] text-slate-650 font-medium whitespace-nowrap">
                         {lbl.planRate}
                       </td>
 
-                      {/* PLAN VALIDITY */}
                       <td className="px-6 py-4 text-[13px] text-slate-650 font-medium whitespace-nowrap">
                         {lbl.duration}
                       </td>
 
-                      {/* STATUS */}
                       <td className="px-6 py-4">
                         <StatusBadge status={lbl.status} />
                       </td>
 
-                      {/* ACTION */}
                       <td className="px-6 py-4 text-center">
                         <Button
                           onClick={() => triggerEdit(lbl)}
@@ -517,11 +420,7 @@ export default function MembershipLabelPage() {
           </table>
         </div>
 
-        {/* ============================================================== */}
-        {/* MODALS SECTION                                                 */}
-        {/* ============================================================== */}
 
-        {/* CREATE LABEL DIALOG */}
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto bg-white border border-slate-250 p-6 shadow-xl rounded-xl z-[100]">
             <DialogHeader>
@@ -537,31 +436,26 @@ export default function MembershipLabelPage() {
             <form onSubmit={handleCreateSubmit} className="space-y-5 py-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
-                {/* Label Name */}
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="create-label-name" className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Label Name</Label>
                   <Input id="create-label-name" placeholder="e.g. TK lite" value={newLabelName} onChange={(e) => setNewLabelName(e.target.value)} className="h-10 bg-slate-50/50 border-slate-200 text-sm focus:bg-white animate-none" required />
                 </div>
 
-                {/* Plan Name */}
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="create-plan-name" className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Linked Plan Name</Label>
                   <Input id="create-plan-name" placeholder="e.g. Tk-Lite" value={newPlanName} onChange={(e) => setNewPlanName(e.target.value)} className="h-10 bg-slate-50/50 border-slate-200 text-sm focus:bg-white animate-none" required />
                 </div>
 
-                {/* Plan Rate */}
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="create-plan-rate" className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Plan Rate</Label>
                   <Input id="create-plan-rate" placeholder="e.g. Free Trial or 1000" value={newPlanRate} onChange={(e) => setNewPlanRate(e.target.value)} className="h-10 bg-slate-50/50 border-slate-200 text-sm focus:bg-white animate-none" required />
                 </div>
 
-                {/* Duration */}
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="create-duration" className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Duration</Label>
                   <Input id="create-duration" placeholder="e.g. 15 Days or 3 months" value={newDuration} onChange={(e) => setNewDuration(e.target.value)} className="h-10 bg-slate-50/50 border-slate-200 text-sm focus:bg-white animate-none" required />
                 </div>
 
-                {/* Hex Color Code with live circle callback preview */}
                 <div className="flex flex-col gap-1.5 md:col-span-2">
                   <Label htmlFor="create-hex" className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Hex Color Code</Label>
                   <div className="flex items-center gap-3">
@@ -574,7 +468,6 @@ export default function MembershipLabelPage() {
                   <p className="text-[10px] text-slate-450">Color circle preview dynamically updates if valid format starts with #.</p>
                 </div>
 
-                {/* Status Radio Buttons */}
                 <div className="flex flex-col gap-1.5 md:col-span-2">
                   <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Status</Label>
                   <div className="flex items-center gap-6">
@@ -591,7 +484,6 @@ export default function MembershipLabelPage() {
 
               </div>
 
-              {/* Dynamic Feature Privileges Grid */}
               <div className="pt-4 border-t border-dashed border-slate-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-450 flex items-center gap-1.5">
@@ -602,18 +494,15 @@ export default function MembershipLabelPage() {
                   </Button>
                 </div>
 
-                {/* Features listing */}
                 <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
                   {newFeatures.length === 0 ? (
                     <p className="text-center py-4 text-xs text-slate-400">No feature privileges defined. Click Add Row.</p>
                   ) : (
                     newFeatures.map((feat, index) => (
                       <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 rounded-lg border border-slate-100 bg-slate-50/50">
-                        {/* Privilege Key */}
                         <div className="col-span-5">
                           <Input placeholder="Feature Privilege Text (e.g. Daily Broadcast)" value={feat.key} onChange={(e) => updateFeatureRow(index, 'key', e.target.value, false)} className="h-9 bg-white text-xs border-slate-200 animate-none" required />
                         </div>
-                        {/* Dropdown Type */}
                         <div className="col-span-3">
                           <Select value={feat.type} onValueChange={(val: any) => updateFeatureRow(index, 'type', val, false)}>
                             <SelectTrigger className="h-9 bg-white text-xs border-slate-200"><SelectValue /></SelectTrigger>
@@ -624,7 +513,6 @@ export default function MembershipLabelPage() {
                             </SelectContent>
                           </Select>
                         </div>
-                        {/* Dynamic Value Selector Preview */}
                         <div className="col-span-3">
                           {feat.type === 'yes' && (
                             <span className="h-9 w-9 rounded-md bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center mx-auto" title="Checkmark (Yes)">
@@ -640,7 +528,6 @@ export default function MembershipLabelPage() {
                             <Input placeholder="Limit (e.g. 5)" value={feat.value} onChange={(e) => updateFeatureRow(index, 'value', e.target.value, false)} className="h-9 bg-white text-xs border-slate-250 animate-none text-center font-mono font-bold" required />
                           )}
                         </div>
-                        {/* Delete Action */}
                         <div className="col-span-1 text-center">
                           <Button type="button" variant="outline" size="icon" onClick={() => removeFeatureRow(index, false)} className="h-9 w-9 border-slate-200 text-red-650 hover:text-red-750 hover:bg-red-50 cursor-pointer">
                             <Trash2 className="h-3.5 w-3.5" />
@@ -652,7 +539,6 @@ export default function MembershipLabelPage() {
                 </div>
               </div>
 
-              {/* Dialog Footer */}
               <DialogFooter className="pt-4 border-t border-slate-100 gap-2">
                 <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)} className="h-10 text-xs font-semibold hover:bg-slate-50 cursor-pointer">Cancel</Button>
                 <Button type="submit" className="h-10 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white cursor-pointer">Save Label</Button>
@@ -661,7 +547,6 @@ export default function MembershipLabelPage() {
           </DialogContent>
         </Dialog>
 
-        {/* EDIT LABEL DIALOG */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto bg-white border border-slate-250 p-6 shadow-xl rounded-xl z-[100]">
             <DialogHeader>
@@ -677,31 +562,26 @@ export default function MembershipLabelPage() {
             <form onSubmit={handleEditSubmit} className="space-y-5 py-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
-                {/* Label Name */}
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="edit-label-name" className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Label Name</Label>
                   <Input id="edit-label-name" value={editLabelName} onChange={(e) => setEditLabelName(e.target.value)} className="h-10 bg-slate-50/50 border-slate-200 text-sm focus:bg-white animate-none" required />
                 </div>
 
-                {/* Plan Name */}
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="edit-plan-name" className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Linked Plan Name</Label>
                   <Input id="edit-plan-name" value={editPlanName} onChange={(e) => setEditPlanName(e.target.value)} className="h-10 bg-slate-50/50 border-slate-200 text-sm focus:bg-white animate-none" required />
                 </div>
 
-                {/* Plan Rate */}
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="edit-plan-rate" className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Plan Rate</Label>
                   <Input id="edit-plan-rate" value={editPlanRate} onChange={(e) => setEditPlanRate(e.target.value)} className="h-10 bg-slate-50/50 border-slate-200 text-sm focus:bg-white animate-none" required />
                 </div>
 
-                {/* Duration */}
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="edit-duration" className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Duration</Label>
                   <Input id="edit-duration" value={editDuration} onChange={(e) => setEditDuration(e.target.value)} className="h-10 bg-slate-50/50 border-slate-200 text-sm focus:bg-white animate-none" required />
                 </div>
 
-                {/* Hex Color Code with live circle preview */}
                 <div className="flex flex-col gap-1.5 md:col-span-2">
                   <Label htmlFor="edit-hex" className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Hex Color Code</Label>
                   <div className="flex items-center gap-3">
@@ -714,7 +594,6 @@ export default function MembershipLabelPage() {
                   <p className="text-[10px] text-slate-450">Color circle preview dynamically updates if valid format starts with #.</p>
                 </div>
 
-                {/* Status Radio Buttons */}
                 <div className="flex flex-col gap-1.5 md:col-span-2">
                   <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Status</Label>
                   <div className="flex items-center gap-6">
@@ -731,7 +610,6 @@ export default function MembershipLabelPage() {
 
               </div>
 
-              {/* Dynamic Feature Privileges Grid */}
               <div className="pt-4 border-t border-dashed border-slate-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-slate-450 flex items-center gap-1.5">
@@ -742,7 +620,6 @@ export default function MembershipLabelPage() {
                   </Button>
                 </div>
 
-                {/* Features listing */}
                 <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
                   {editFeatures.length === 0 ? (
                     <p className="text-center py-4 text-xs text-slate-400">No feature privileges defined. Click Add Row.</p>
@@ -788,7 +665,6 @@ export default function MembershipLabelPage() {
                 </div>
               </div>
 
-              {/* Dialog Footer */}
               <DialogFooter className="pt-4 border-t border-slate-100 gap-2">
                 <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)} className="h-10 text-xs font-semibold hover:bg-slate-50 cursor-pointer">Cancel</Button>
                 <Button type="submit" className="h-10 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white cursor-pointer">Save Changes</Button>
@@ -797,7 +673,6 @@ export default function MembershipLabelPage() {
           </DialogContent>
         </Dialog>
 
-        {/* DELETE LABEL DIALOG */}
         <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <DialogContent className="sm:max-w-md bg-white border border-slate-250 p-6 shadow-xl rounded-xl z-[150]">
             <DialogHeader>

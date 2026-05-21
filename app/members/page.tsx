@@ -94,7 +94,6 @@ export default function MembersPage() {
   return (
     <DashboardLayout>
       <div>
-        {/* Header */}
         <div className="mb-5">
           <Header
             title="Members"
@@ -104,7 +103,6 @@ export default function MembersPage() {
           />
         </div>
 
-        {/* Search and Filters */}
         <div
           className="p-4 border border-b-0 bg-white flex flex-col sm:flex-row gap-3 items-stretch sm:items-center"
           style={{ borderColor: '#E5E7EB', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}
@@ -128,7 +126,6 @@ export default function MembersPage() {
           />
         </div>
 
-        {/* Table */}
         <MembersTable members={filteredMembers} />
       </div>
     </DashboardLayout>

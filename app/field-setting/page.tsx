@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Sliders,
   Plus,
@@ -55,7 +55,7 @@ interface SubcategoryItem extends BaseFieldItem {
 }
 
 interface StampItem extends BaseFieldItem {
-  image: string; // URL or base64 or placeholder
+  image: string;
 }
 
 interface InvoiceSettingItem {
@@ -118,92 +118,59 @@ export default function FieldSettingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('category');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Initial Mock Data Stores
-  const [categories, setCategories] = useState<BaseFieldItem[]>([
-    { id: '1', name: 'Electronics' },
-    { id: '2', name: 'Office Supplies' },
-    { id: '3', name: 'Home Appliances' },
-  ]);
+  const [categories, setCategories] = useState<BaseFieldItem[]>([]);
+  const [subcategories, setSubcategories] = useState<SubcategoryItem[]>([]);
+  const [conditions, setConditions] = useState<BaseFieldItem[]>([]);
+  const [wtbPrices, setWtbPrices] = useState<BaseFieldItem[]>([]);
+  const [wtsPrices, setWtsPrices] = useState<BaseFieldItem[]>([]);
+  const [uoms, setUoms] = useState<BaseFieldItem[]>([]);
+  const [designations, setDesignations] = useState<BaseFieldItem[]>([]);
+  const [inactiveStatuses, setInactiveStatuses] = useState<BaseFieldItem[]>([]);
+  const [businessTypes, setBusinessTypes] = useState<BaseFieldItem[]>([]);
+  const [addressTitles, setAddressTitles] = useState<BaseFieldItem[]>([]);
+  const [supportCategories, setSupportCategories] = useState<BaseFieldItem[]>([]);
+  const [stamps, setStamps] = useState<StampItem[]>([]);
+  const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettingItem[]>([]);
+  const [termsConditions, setTermsConditions] = useState<TermsConditionItem[]>([]);
 
-  const [subcategories, setSubcategories] = useState<SubcategoryItem[]>([
-    { id: '1', name: 'Smartphones', category: 'Mobile' },
-    { id: '2', name: 'Desktop Computers', category: 'PC' },
-    { id: '3', name: 'Macbooks', category: 'Laptop' },
-  ]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [conditions, setConditions] = useState<BaseFieldItem[]>([
-    { id: '1', name: 'Brand New (Unopened)' },
-    { id: '2', name: 'Refurbished (Grade A)' },
-    { id: '3', name: 'Gently Used' },
-  ]);
+  useEffect(() => {
+    const fetchFieldSettings = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/field-settings?tab=${activeTab}`);
+        if (response.ok) {
+          const data = await response.json();
+          switch (activeTab) {
+            case 'category': setCategories(data); break;
+            case 'subcategory': setSubcategories(data); break;
+            case 'condition': setConditions(data); break;
+            case 'wtb-price': setWtbPrices(data); break;
+            case 'wts-price': setWtsPrices(data); break;
+            case 'uom': setUoms(data); break;
+            case 'designation': setDesignations(data); break;
+            case 'inactive-status': setInactiveStatuses(data); break;
+            case 'business-type': setBusinessTypes(data); break;
+            case 'address-title': setAddressTitles(data); break;
+            case 'support-category': setSupportCategories(data); break;
+            case 'stamp': setStamps(data); break;
+            case 'invoice-setting': setInvoiceSettings(data); break;
+            case 'terms-condition': setTermsConditions(data); break;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch field settings:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchFieldSettings();
+  }, [activeTab]);
 
-  const [wtbPrices, setWtbPrices] = useState<BaseFieldItem[]>([
-    { id: '1', name: '$100 - $500' },
-    { id: '2', name: '$500 - $1,500' },
-    { id: '3', name: '$1,500+' },
-  ]);
-
-  const [wtsPrices, setWtsPrices] = useState<BaseFieldItem[]>([
-    { id: '1', name: '$80 - $450' },
-    { id: '2', name: '$450 - $1,300' },
-    { id: '3', name: '$1,300+' },
-  ]);
-
-  const [uoms, setUoms] = useState<BaseFieldItem[]>([
-    { id: '1', name: 'Pieces (pcs)' },
-    { id: '2', name: 'Kilograms (kg)' },
-    { id: '3', name: 'Boxes (bx)' },
-  ]);
-
-  const [designations, setDesignations] = useState<BaseFieldItem[]>([
-    { id: '1', name: 'Manager' },
-    { id: '2', name: 'Administrator' },
-    { id: '3', name: 'Staff Representative' },
-  ]);
-
-  const [inactiveStatuses, setInactiveStatuses] = useState<BaseFieldItem[]>([
-    { id: '1', name: 'Temporary Account Freeze' },
-    { id: '2', name: 'Billing Arrears Suspension' },
-    { id: '3', name: 'Self-deactivated by Member' },
-  ]);
-
-  const [businessTypes, setBusinessTypes] = useState<BaseFieldItem[]>([
-    { id: '1', name: 'Proprietorship' },
-    { id: '2', name: 'Private Limited (Pvt Ltd)' },
-    { id: '3', name: 'LLP Partnership' },
-  ]);
-
-  const [addressTitles, setAddressTitles] = useState<BaseFieldItem[]>([
-    { id: '1', name: 'Corporate Headquarters' },
-    { id: '2', name: 'Distribution Warehouse' },
-    { id: '3', name: 'Registered Billing Address' },
-  ]);
-
-  const [supportCategories, setSupportCategories] = useState<BaseFieldItem[]>([
-    { id: '1', name: 'Technical Server Error' },
-    { id: '2', name: 'Subscription Plan Change' },
-    { id: '3', name: 'Payment/Payout Settlement' },
-  ]);
-
-  const [stamps, setStamps] = useState<StampItem[]>([
-    { id: '1', name: 'Super Seller Badge', image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=100&auto=format&fit=crop&q=60' },
-    { id: '2', name: 'Verified Partner', image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=60' },
-  ]);
-
-  const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettingItem[]>([
-    { id: '1', startDate: '2026-04-01', endDate: '2027-03-31', prefix: 'INV-2026-', invoiceNum: 10042, suffix: '-HQ' }
-  ]);
-
-  const [termsConditions, setTermsConditions] = useState<TermsConditionItem[]>([
-    { id: '1', date: '2026-05-15', category: 'Privacy Policy', content: 'Our comprehensive privacy document sets clean expectations...' },
-    { id: '2', date: '2026-05-10', category: 'Terms & Condition', content: 'Use of the dashboard and admin templates is strictly regulated...' }
-  ]);
-
-  // Modal State Control
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null); // holds reference if editing
+  const [editingItem, setEditingItem] = useState<any>(null);
 
-  // Dynamic Form Field State
   const [formName, setFormName] = useState('');
   const [formCategory, setFormCategory] = useState('Mobile');
   const [formImage, setFormImage] = useState('');
@@ -216,7 +183,6 @@ export default function FieldSettingsPage() {
   const [formTermsCategory, setFormTermsCategory] = useState('Terms & Condition');
   const [formTermsContent, setFormTermsContent] = useState('');
 
-  // Filter lists based on Search bar term
   const filteredData = useMemo(() => {
     const term = searchTerm.toLowerCase();
     switch (activeTab) {
@@ -242,11 +208,9 @@ export default function FieldSettingsPage() {
     stamps, invoiceSettings, termsConditions
   ]);
 
-  // Handle open modal for either Add New or Edit
   const openModal = (item?: any) => {
     setEditingItem(item || null);
     if (item) {
-      // populate forms based on activeTab
       setFormName(item.name || '');
       setFormCategory(item.category || 'Mobile');
       setFormImage(item.image || '');
@@ -259,7 +223,6 @@ export default function FieldSettingsPage() {
       setFormTermsCategory(item.category || 'Terms & Condition');
       setFormTermsContent(item.content || '');
     } else {
-      // reset forms
       setFormName('');
       setFormCategory('Mobile');
       setFormImage('');
@@ -275,85 +238,93 @@ export default function FieldSettingsPage() {
     setModalOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const isEdit = !!editingItem;
     const tabName = TABS.find(t => t.key === activeTab)?.title || 'Field';
 
+    let payload: any = { name: formName };
     if (activeTab === 'subcategory') {
       if (!formName.trim()) { toast.error('Please enter name'); return; }
-      if (isEdit) {
-        setSubcategories(prev => prev.map(x => x.id === editingItem.id ? { ...x, name: formName, category: formCategory } : x));
-      } else {
-        setSubcategories(prev => [...prev, { id: String(Date.now()), name: formName, category: formCategory }]);
-      }
+      payload = { name: formName, category: formCategory };
     } else if (activeTab === 'stamp') {
       if (!formName.trim()) { toast.error('Please enter stamp name'); return; }
-      const finalImg = formImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60';
-      if (isEdit) {
-        setStamps(prev => prev.map(x => x.id === editingItem.id ? { ...x, name: formName, image: finalImg } : x));
-      } else {
-        setStamps(prev => [...prev, { id: String(Date.now()), name: formName, image: finalImg }]);
-      }
+      payload = { name: formName, image: formImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60' };
     } else if (activeTab === 'invoice-setting') {
       if (!formStartDate || !formEndDate) { toast.error('Dates are required'); return; }
-      if (isEdit) {
-        setInvoiceSettings(prev => prev.map(x => x.id === editingItem.id ? { ...x, startDate: formStartDate, endDate: formEndDate, prefix: formPrefix, invoiceNum: Number(formInvoiceNum), suffix: formSuffix } : x));
-      } else {
-        setInvoiceSettings(prev => [...prev, { id: String(Date.now()), startDate: formStartDate, endDate: formEndDate, prefix: formPrefix, invoiceNum: Number(formInvoiceNum), suffix: formSuffix }]);
-      }
+      payload = { startDate: formStartDate, endDate: formEndDate, prefix: formPrefix, invoiceNum: Number(formInvoiceNum), suffix: formSuffix };
     } else if (activeTab === 'terms-condition') {
       if (!formTermsContent.trim()) { toast.error('Content is required'); return; }
-      if (isEdit) {
-        setTermsConditions(prev => prev.map(x => x.id === editingItem.id ? { ...x, date: formTermsDate, category: formTermsCategory, content: formTermsContent } : x));
-      } else {
-        setTermsConditions(prev => [...prev, { id: String(Date.now()), date: formTermsDate, category: formTermsCategory, content: formTermsContent }]);
-      }
+      payload = { date: formTermsDate, category: formTermsCategory, content: formTermsContent };
     } else {
-      // 10 Standard Tabs
       if (!formName.trim()) { toast.error('Please enter name'); return; }
-      const updateData = (prev: BaseFieldItem[]) => {
-        if (isEdit) {
-          return prev.map(x => x.id === editingItem.id ? { ...x, name: formName } : x);
-        } else {
-          return [...prev, { id: String(Date.now()), name: formName }];
-        }
-      };
-      if (activeTab === 'category') setCategories(updateData);
-      else if (activeTab === 'condition') setConditions(updateData);
-      else if (activeTab === 'wtb-price') setWtbPrices(updateData);
-      else if (activeTab === 'wts-price') setWtsPrices(updateData);
-      else if (activeTab === 'uom') setUoms(updateData);
-      else if (activeTab === 'designation') setDesignations(updateData);
-      else if (activeTab === 'inactive-status') setInactiveStatuses(updateData);
-      else if (activeTab === 'business-type') setBusinessTypes(updateData);
-      else if (activeTab === 'address-title') setAddressTitles(updateData);
-      else if (activeTab === 'support-category') setSupportCategories(updateData);
     }
 
-    toast.success(`${tabName} config saved successfully!`);
-    setModalOpen(false);
+    try {
+      const url = isEdit ? `/api/field-settings/${activeTab}/${editingItem.id}` : `/api/field-settings/${activeTab}`;
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const savedItem = await res.json();
+      
+      const updateData = (prev: any[]) => isEdit ? prev.map(x => x.id === editingItem.id ? { ...x, ...savedItem } : x) : [...prev, savedItem];
+
+      switch (activeTab) {
+        case 'category': setCategories(updateData); break;
+        case 'subcategory': setSubcategories(updateData); break;
+        case 'condition': setConditions(updateData); break;
+        case 'wtb-price': setWtbPrices(updateData); break;
+        case 'wts-price': setWtsPrices(updateData); break;
+        case 'uom': setUoms(updateData); break;
+        case 'designation': setDesignations(updateData); break;
+        case 'inactive-status': setInactiveStatuses(updateData); break;
+        case 'business-type': setBusinessTypes(updateData); break;
+        case 'address-title': setAddressTitles(updateData); break;
+        case 'support-category': setSupportCategories(updateData); break;
+        case 'stamp': setStamps(updateData); break;
+        case 'invoice-setting': setInvoiceSettings(updateData); break;
+        case 'terms-condition': setTermsConditions(updateData); break;
+      }
+      
+      toast.success(`${tabName} config saved successfully!`);
+      setModalOpen(false);
+    } catch (error) {
+      toast.error('Failed to save settings');
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this setting?')) return;
     const tabName = TABS.find(t => t.key === activeTab)?.title || 'Field';
 
-    if (activeTab === 'category') setCategories(prev => prev.filter(x => x.id !== id));
-    else if (activeTab === 'subcategory') setSubcategories(prev => prev.filter(x => x.id !== id));
-    else if (activeTab === 'condition') setConditions(prev => prev.filter(x => x.id !== id));
-    else if (activeTab === 'wtb-price') setWtbPrices(prev => prev.filter(x => x.id !== id));
-    else if (activeTab === 'wts-price') setWtsPrices(prev => prev.filter(x => x.id !== id));
-    else if (activeTab === 'uom') setUoms(prev => prev.filter(x => x.id !== id));
-    else if (activeTab === 'designation') setDesignations(prev => prev.filter(x => x.id !== id));
-    else if (activeTab === 'inactive-status') setInactiveStatuses(prev => prev.filter(x => x.id !== id));
-    else if (activeTab === 'business-type') setBusinessTypes(prev => prev.filter(x => x.id !== id));
-    else if (activeTab === 'address-title') setAddressTitles(prev => prev.filter(x => x.id !== id));
-    else if (activeTab === 'support-category') setSupportCategories(prev => prev.filter(x => x.id !== id));
-    else if (activeTab === 'stamp') setStamps(prev => prev.filter(x => x.id !== id));
-    else if (activeTab === 'invoice-setting') setInvoiceSettings(prev => prev.filter(x => x.id !== id));
-    else if (activeTab === 'terms-condition') setTermsConditions(prev => prev.filter(x => x.id !== id));
+    try {
+      await fetch(`/api/field-settings/${activeTab}/${id}`, { method: 'DELETE' });
+      
+      const filterData = (prev: any[]) => prev.filter(x => x.id !== id);
 
-    toast.success(`${tabName} deleted successfully.`);
+      switch (activeTab) {
+        case 'category': setCategories(filterData); break;
+        case 'subcategory': setSubcategories(filterData); break;
+        case 'condition': setConditions(filterData); break;
+        case 'wtb-price': setWtbPrices(filterData); break;
+        case 'wts-price': setWtsPrices(filterData); break;
+        case 'uom': setUoms(filterData); break;
+        case 'designation': setDesignations(filterData); break;
+        case 'inactive-status': setInactiveStatuses(filterData); break;
+        case 'business-type': setBusinessTypes(filterData); break;
+        case 'address-title': setAddressTitles(filterData); break;
+        case 'support-category': setSupportCategories(filterData); break;
+        case 'stamp': setStamps(filterData); break;
+        case 'invoice-setting': setInvoiceSettings(filterData); break;
+        case 'terms-condition': setTermsConditions(filterData); break;
+      }
+
+      toast.success(`${tabName} deleted successfully.`);
+    } catch (error) {
+      toast.error('Failed to delete setting');
+    }
   };
 
   const handleImageMock = () => {
@@ -374,7 +345,6 @@ export default function FieldSettingsPage() {
   return (
     <DashboardLayout>
       <div className="flex flex-col space-y-6">
-        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <Header
             title="Field Settings"
@@ -389,9 +359,7 @@ export default function FieldSettingsPage() {
           </Button>
         </div>
 
-        {/* Outer Split Layout */}
         <div className="flex flex-col lg:flex-row gap-6 items-stretch">
-          {/* Left Navigation: 14 Tabs list with beautiful badges */}
           <div
             className="w-full lg:w-72 bg-white border shrink-0 flex flex-col gap-1.5 h-fit p-4 shadow-sm"
             style={{ borderColor: '#E5E7EB', borderRadius: '12px' }}
@@ -424,12 +392,10 @@ export default function FieldSettingsPage() {
             })}
           </div>
 
-          {/* Right Panel: Data Table */}
           <div
             className="flex-1 flex flex-col bg-white border overflow-hidden shadow-sm"
             style={{ borderColor: '#E5E7EB', borderRadius: '12px' }}
           >
-            {/* Tab Description Header */}
             <div
               className="p-4 border-b bg-white flex flex-col md:flex-row md:items-center justify-between gap-3"
               style={{ borderColor: '#EEF2F6' }}
@@ -450,7 +416,6 @@ export default function FieldSettingsPage() {
               </div>
             </div>
 
-            {/* Table Area */}
             <div className="overflow-x-auto flex-1">
               <table className="w-full">
                 <thead className="bg-white border-b" style={{ borderColor: '#EEF2F6' }}>
@@ -496,7 +461,13 @@ export default function FieldSettingsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredData.length === 0 ? (
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={10} className="px-6 py-12 text-center text-sm text-slate-500">
+                        Loading settings...
+                      </td>
+                    </tr>
+                  ) : filteredData.length === 0 ? (
                     <tr>
                       <td colSpan={10} className="px-6 py-12 text-center text-sm text-slate-500">
                         No settings match your search. Click Add New to configure.
@@ -510,7 +481,6 @@ export default function FieldSettingsPage() {
                           className="border-b hover:bg-slate-55 transition-colors bg-white select-none"
                           style={{ borderColor: '#F1F5F9' }}
                         >
-                          {/* Case A: Standard and Subcategory */}
                           {activeTab !== 'stamp' && activeTab !== 'invoice-setting' && activeTab !== 'terms-condition' && (
                             <>
                               <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs font-semibold">
@@ -529,7 +499,6 @@ export default function FieldSettingsPage() {
                             </>
                           )}
 
-                          {/* Case B: Product Stamp */}
                           {activeTab === 'stamp' && (
                             <>
                               <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs font-semibold">
@@ -550,7 +519,6 @@ export default function FieldSettingsPage() {
                             </>
                           )}
 
-                          {/* Case C: Invoice Configurations */}
                           {activeTab === 'invoice-setting' && (
                             <>
                               <td className="px-6 py-4">
@@ -577,7 +545,6 @@ export default function FieldSettingsPage() {
                             </>
                           )}
 
-                          {/* Case D: Terms & Conditions */}
                           {activeTab === 'terms-condition' && (
                             <>
                               <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs font-semibold">
@@ -597,7 +564,6 @@ export default function FieldSettingsPage() {
                             </>
                           )}
 
-                          {/* Action Buttons */}
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <Button
@@ -626,7 +592,6 @@ export default function FieldSettingsPage() {
           </div>
         </div>
 
-        {/* Custom Form Add / Edit Popup Modal Container */}
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
           <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col overflow-hidden bg-white border border-slate-250 p-6 shadow-xl rounded-xl z-[100]">
             <DialogHeader className="pb-3 border-b border-slate-100">
@@ -642,9 +607,7 @@ export default function FieldSettingsPage() {
             </DialogHeader>
 
             <div className="flex-1 overflow-y-auto py-5 space-y-4 pr-1">
-              {/* Render dynamic inputs based on ActiveTab */}
 
-              {/* Form 1: Standard Modal (10 Standard Tabs) */}
               {activeTab !== 'subcategory' && activeTab !== 'stamp' && activeTab !== 'invoice-setting' && activeTab !== 'terms-condition' && (
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="standard-name" className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
@@ -660,7 +623,6 @@ export default function FieldSettingsPage() {
                 </div>
               )}
 
-              {/* Form 2: Product Sub Category Modal */}
               {activeTab === 'subcategory' && (
                 <div className="space-y-4">
                   <div className="flex flex-col gap-1.5">
@@ -694,7 +656,6 @@ export default function FieldSettingsPage() {
                 </div>
               )}
 
-              {/* Form 3: Product Stamp Modal with premium file mock */}
               {activeTab === 'stamp' && (
                 <div className="space-y-4">
                   <div className="flex flex-col gap-1.5">
@@ -712,7 +673,6 @@ export default function FieldSettingsPage() {
                   <div className="flex flex-col gap-2">
                     <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Image File</Label>
                     <div className="flex items-center gap-4">
-                      {/* Avatar preview */}
                       <div className="w-14 h-14 rounded-full border border-slate-200 flex items-center justify-center bg-slate-50 overflow-hidden shrink-0">
                         {formImage ? (
                           <img src={formImage} alt="Stamp Preview" className="w-full h-full object-cover" />
@@ -739,7 +699,6 @@ export default function FieldSettingsPage() {
                 </div>
               )}
 
-              {/* Form 4: Invoice Configuration Modal */}
               {activeTab === 'invoice-setting' && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1.5">
@@ -806,7 +765,6 @@ export default function FieldSettingsPage() {
                 </div>
               )}
 
-              {/* Form 5: Terms & Conditions Modal with structured Rich Text Toolbar */}
               {activeTab === 'terms-condition' && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -839,11 +797,9 @@ export default function FieldSettingsPage() {
                     </div>
                   </div>
 
-                  {/* Rich Text Editor Styling */}
                   <div className="flex flex-col gap-1.5">
                     <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Content</Label>
                     <div className="border border-slate-200 rounded-lg overflow-hidden flex flex-col focus-within:ring-1 focus-within:ring-slate-900">
-                      {/* Editor Toolbar with action buttons */}
                       <div className="bg-slate-50 border-b border-slate-200 px-3 py-1.5 flex flex-wrap items-center gap-1.5">
                         <button
                           type="button"
@@ -904,7 +860,6 @@ export default function FieldSettingsPage() {
                           <Link2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      {/* Editor Textarea */}
                       <textarea
                         value={formTermsContent}
                         onChange={(e) => setFormTermsContent(e.target.value)}

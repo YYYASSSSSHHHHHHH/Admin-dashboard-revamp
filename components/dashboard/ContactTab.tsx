@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DESIGNATIONS } from '@/lib/mockData';
+import { DESIGNATIONS } from '@/lib/constants';
 import { toast } from 'sonner';
 
 const MAX_CONTACTS = 3;

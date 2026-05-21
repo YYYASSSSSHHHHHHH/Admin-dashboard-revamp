@@ -47,12 +47,10 @@ export default function MemberDetail() {
     [memberId]
   );
 
-  // Local editable state for tabs (mockup persistence within this screen)
   const [companyName, setCompanyName] = useState(seed.company);
   const [companyDetails, setCompanyDetails] = useState(seed.companyDetails);
   const [contacts, setContacts] = useState(seed.contacts);
   const [addresses, setAddresses] = useState(seed.addresses);
-  // Plan-related state shared between persistent header and AssignPlanTab
   const [plan, setPlan] = useState(seed.plan);
   const [status, setStatus] = useState(seed.status);
   const [expiry, setExpiry] = useState(seed.expiry);
@@ -71,7 +69,6 @@ export default function MemberDetail() {
 
   return (
     <div className="p-6 md:p-8 lg:p-10" data-testid="member-detail-page">
-      {/* Back link */}
       <Link
         to="/members"
         data-testid="member-detail-back"
@@ -81,7 +78,6 @@ export default function MemberDetail() {
         Back to Members
       </Link>
 
-      {/* Persistent stats header (visible across all tabs) */}
       <header
         data-testid="persistent-header"
         className="bg-white border border-slate-200/80 rounded-xl shadow-sm p-6 mb-6"
@@ -137,7 +133,6 @@ export default function MemberDetail() {
         </div>
       </header>
 
-      {/* Tabs */}
       <Tabs defaultValue="company" data-testid="member-detail-tabs">
         <TabsList className="bg-white border border-slate-200/80 h-11 p-1 rounded-lg shadow-sm mb-5">
           <TabsTrigger

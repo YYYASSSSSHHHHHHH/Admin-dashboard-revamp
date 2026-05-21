@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Radio,
   Search,
@@ -9,7 +9,10 @@ import {
   Edit2,
   Building2,
   Clock,
+  X,
+  EyeOff,
 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Header } from '@/components/dashboard/Header';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
@@ -46,44 +49,7 @@ interface BroadcastRecord {
   unit: string;
 }
 
-const DEFAULT_BROADCASTS: BroadcastRecord[] = [
-  {
-    id: 'BRD-0003',
-    at: '2026-05-08T17:59:46Z',
-    sender: 'Sneha Reddy',
-    companyName: 'Reddy Wholesale',
-    text: 'Looking for Type-C 65W chargers in bulk | Qty: 500 Pcs',
-    sendingOption: 'SendToGroup',
-    status: 'Approved',
-    type: 'WTB',
-    qty: 500,
-    unit: 'Pcs'
-  },
-  {
-    id: 'BRD-0002',
-    at: '2026-05-08T17:55:49Z',
-    sender: 'Tattva Jain',
-    companyName: 'Tattva Infosys',
-    text: 'WTB Laptop Laptop | Qty: 1 Pcs | Quote',
-    sendingOption: 'SendToAll',
-    status: 'Approved',
-    type: 'WTB',
-    qty: 1,
-    unit: 'Pcs'
-  },
-  {
-    id: 'BRD-0001',
-    at: '2026-05-08T14:34:58Z',
-    sender: 'Jayesh Jain',
-    companyName: 'Speedtech Systems',
-    text: 'WTS Mobile iPhone | Qty: 1 Pcs | Call',
-    sendingOption: 'SendToAll',
-    status: 'Rejected',
-    type: 'WTS',
-    qty: 1,
-    unit: 'Pcs'
-  }
-];
+
 
 function formatDateDisplay(isoString: string) {
   const d = new Date(isoString);
@@ -101,24 +67,45 @@ function formatDateDisplay(isoString: string) {
 }
 
 export default function BroadcastHistoryPage() {
-  const [broadcasts, setBroadcasts] = useState<BroadcastRecord[]>(DEFAULT_BROADCASTS);
+  const [broadcasts, setBroadcasts] = useState<BroadcastRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [audienceFilter, setAudienceFilter] = useState('All');
 
-  // Modal state
   const [selectedBroadcast, setSelectedBroadcast] = useState<BroadcastRecord | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Edit form states (matching BroadcastTab.tsx pattern)
   const [editText, setEditText] = useState('');
   const [editType, setEditType] = useState<'WTB' | 'WTS'>('WTB');
   const [editQty, setEditQty] = useState('');
   const [editUnit, setEditUnit] = useState('Pcs');
   const [editSendingOption, setEditSendingOption] = useState('SendToAll');
+
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [hideOpen, setHideOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('Select a reason');
+  const [hideReason, setHideReason] = useState('Select a reason');
+  const [actionTargetId, setActionTargetId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchBroadcasts = async () => {
+      try {
+        const response = await fetch('/api/broadcast-history');
+        if (response.ok) {
+          const data = await response.json();
+          setBroadcasts(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch broadcasts:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchBroadcasts();
+  }, []);
 
   const filteredBroadcasts = useMemo(() => {
     return broadcasts.filter((b) => {
@@ -146,29 +133,51 @@ export default function BroadcastHistoryPage() {
     setModalOpen(true);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editText.trim()) {
       toast.error('Broadcast message is required.');
       return;
     }
-    setBroadcasts(prev =>
-      prev.map(b =>
-        b.id === selectedBroadcast?.id
-          ? { ...b, text: editText, type: editType, qty: parseFloat(editQty) || 0, unit: editUnit, sendingOption: editSendingOption }
-          : b
-      )
-    );
-    setSelectedBroadcast(prev => prev ? { ...prev, text: editText, type: editType, qty: parseFloat(editQty) || 0, unit: editUnit, sendingOption: editSendingOption } : null);
-    toast.success('Broadcast details updated');
-    setIsEditing(false);
+    
+    try {
+      const payload = { text: editText, type: editType, qty: parseFloat(editQty) || 0, unit: editUnit, sendingOption: editSendingOption };
+      await fetch(`/api/broadcast-history/${selectedBroadcast?.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      setBroadcasts(prev =>
+        prev.map(b =>
+          b.id === selectedBroadcast?.id
+            ? { ...b, ...payload }
+            : b
+        )
+      );
+      setSelectedBroadcast(prev => prev ? { ...prev, ...payload } : null);
+      toast.success('Broadcast details updated');
+      setIsEditing(false);
+    } catch (error) {
+      toast.error('Failed to update broadcast details');
+    }
   };
 
-  const handleUpdateStatus = (id: string, newStatus: string) => {
-    setBroadcasts(prev => prev.map(b => b.id === id ? { ...b, status: newStatus } : b));
-    if (selectedBroadcast?.id === id) {
-      setSelectedBroadcast(prev => prev ? { ...prev, status: newStatus } : null);
+  const handleUpdateStatus = async (id: string, newStatus: string) => {
+    try {
+      await fetch(`/api/broadcast-history/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      
+      setBroadcasts(prev => prev.map(b => b.id === id ? { ...b, status: newStatus } : b));
+      if (selectedBroadcast?.id === id) {
+        setSelectedBroadcast(prev => prev ? { ...prev, status: newStatus } : null);
+      }
+      toast.success(`Broadcast status updated to ${newStatus}`);
+    } catch (error) {
+      toast.error('Failed to update status');
     }
-    toast.success(`Broadcast status updated to ${newStatus}`);
   };
 
   return (
@@ -179,7 +188,6 @@ export default function BroadcastHistoryPage() {
           subtitle="Audit ledger of all sent broadcast feeds, search queries, and platform-wide market notifications."
         />
 
-        {/* Search & Filter Bar */}
         <div className="bg-white border border-slate-200/80 rounded-xl p-5 shadow-sm">
           <div className="flex flex-col sm:flex-row items-center gap-3">
             <div className="relative w-full sm:flex-1">
@@ -217,7 +225,6 @@ export default function BroadcastHistoryPage() {
           </div>
         </div>
 
-        {/* Table */}
         <div className="bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -233,7 +240,13 @@ export default function BroadcastHistoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80">
-                {filteredBroadcasts.length === 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-xs text-slate-500">
+                      Loading broadcast history...
+                    </td>
+                  </tr>
+                ) : filteredBroadcasts.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center text-xs text-slate-500">
                       No broadcast histories matched the selected filter query criteria.
@@ -276,7 +289,6 @@ export default function BroadcastHistoryPage() {
           </div>
         </div>
 
-        {/* Detail Modal — matches BroadcastTab.tsx popup exactly */}
         <Dialog open={modalOpen} onOpenChange={(open) => { setModalOpen(open); if (!open) setIsEditing(false); }}>
           <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-0">
             {selectedBroadcast && (
@@ -307,7 +319,6 @@ export default function BroadcastHistoryPage() {
                         <span className="font-mono text-slate-700">{selectedBroadcast.id}</span>
                       </span>
                     </DialogDescription>
-                    {/* Edit / Save button — top right, same as BroadcastTab */}
                     {!isEditing ? (
                       <Button
                         type="button"
@@ -333,7 +344,6 @@ export default function BroadcastHistoryPage() {
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto px-6 my-2 space-y-5">
-                  {/* 2-col info grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                       <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">Broadcaster</div>
@@ -401,7 +411,6 @@ export default function BroadcastHistoryPage() {
                     </div>
                   </div>
 
-                  {/* Message */}
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 mb-2">Broadcast Message</div>
                     {!isEditing ? (
@@ -418,7 +427,6 @@ export default function BroadcastHistoryPage() {
                     )}
                   </div>
 
-                  {/* Timestamp row */}
                   <div className="flex items-center justify-between pt-3 border-t border-dashed border-slate-200">
                     <div className="flex items-center gap-1.5 text-xs text-slate-500">
                       <Clock className="h-3.5 w-3.5" />
@@ -431,12 +439,18 @@ export default function BroadcastHistoryPage() {
                   </div>
                 </div>
 
-                {/* Footer — Other Actions (Hide/Reject) left | Cancel + Approve right */}
                 <DialogFooter className="pb-6 px-6 pt-4 border-t border-slate-100 mt-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full sm:space-x-0">
                   <Select
                     onValueChange={(action) => {
-                      if (action === 'hide') { handleUpdateStatus(selectedBroadcast.id, 'Hidden'); setModalOpen(false); }
-                      else if (action === 'reject') { handleUpdateStatus(selectedBroadcast.id, 'Rejected'); setModalOpen(false); }
+                      setActionTargetId(selectedBroadcast.id);
+                      setModalOpen(false);
+                      if (action === 'hide') {
+                        setHideReason('Select a reason');
+                        setHideOpen(true);
+                      } else if (action === 'reject') {
+                        setRejectReason('Select a reason');
+                        setRejectOpen(true);
+                      }
                     }}
                   >
                     <SelectTrigger className="h-10 w-full sm:w-auto border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-sm font-medium sm:min-w-[160px]">
@@ -467,6 +481,126 @@ export default function BroadcastHistoryPage() {
                 </DialogFooter>
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+          <DialogContent className="sm:max-w-[460px] bg-white rounded-xl shadow-xl border border-slate-200 p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="h-7 w-7 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                  <X className="h-3.5 w-3.5 text-red-600" />
+                </div>
+                <DialogTitle className="text-base font-bold text-slate-900 font-display">
+                  Reject Broadcast
+                </DialogTitle>
+              </div>
+              <DialogDescription className="text-sm text-slate-500 mt-2 leading-relaxed">
+                Pick a reason{' '}
+                <span className="text-blue-600 font-medium">(reasons managed by admin)</span>
+                . Optionally add a short note for the audit log.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  Reject Reason
+                </Label>
+                <Select value={rejectReason} onValueChange={setRejectReason}>
+                  <SelectTrigger className="h-11 border-slate-200 bg-white text-sm text-slate-700">
+                    <SelectValue placeholder="Select a reason" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border border-slate-200 z-[200]">
+                    <SelectItem value="inappropriate">Inappropriate Content</SelectItem>
+                    <SelectItem value="duplicate">Duplicate Broadcast</SelectItem>
+                    <SelectItem value="spam">Spam / Misleading</SelectItem>
+                    <SelectItem value="policy">Policy Violation</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="px-6 pb-6 flex items-center justify-end gap-2.5">
+              <Button
+                variant="outline"
+                className="h-9 px-4 text-xs font-semibold border-slate-200"
+                onClick={() => setRejectOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="h-9 px-4 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white"
+                onClick={() => {
+                  if (actionTargetId) handleUpdateStatus(actionTargetId, 'Rejected');
+                  setRejectOpen(false);
+                  setActionTargetId(null);
+                }}
+              >
+                Confirm Reject
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={hideOpen} onOpenChange={setHideOpen}>
+          <DialogContent className="sm:max-w-[460px] bg-white rounded-xl shadow-xl border border-slate-200 p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="h-7 w-7 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                  <EyeOff className="h-3.5 w-3.5 text-slate-600" />
+                </div>
+                <DialogTitle className="text-base font-bold text-slate-900 font-display">
+                  Hide Broadcast
+                </DialogTitle>
+              </div>
+              <DialogDescription className="text-sm text-slate-500 mt-2 leading-relaxed">
+                Pick a reason{' '}
+                <span className="text-blue-600 font-medium">(reasons managed by admin)</span>
+                . Optionally add a short note for the audit log.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                  Hide Reason
+                </Label>
+                <Select value={hideReason} onValueChange={setHideReason}>
+                  <SelectTrigger className="h-11 border-slate-200 bg-white text-sm text-slate-700">
+                    <SelectValue placeholder="Select a reason" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border border-slate-200 z-[200]">
+                    <SelectItem value="review">Under Review</SelectItem>
+                    <SelectItem value="outdated">Outdated Listing</SelectItem>
+                    <SelectItem value="owner_request">Owner Request</SelectItem>
+                    <SelectItem value="compliance">Compliance Hold</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="px-6 pb-6 flex items-center justify-end gap-2.5">
+              <Button
+                variant="outline"
+                className="h-9 px-4 text-xs font-semibold border-slate-200"
+                onClick={() => setHideOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="h-9 px-4 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white"
+                onClick={() => {
+                  if (actionTargetId) handleUpdateStatus(actionTargetId, 'Hidden');
+                  setHideOpen(false);
+                  setActionTargetId(null);
+                }}
+              >
+                Confirm Hide
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

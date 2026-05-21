@@ -111,7 +111,6 @@ export const AssignPlanTab = ({
   setInvoices,
 }) => {
 
-  // Dialog & form state
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState("assign");
   const [planId, setPlanId] = useState(seed.plan.id);
@@ -126,14 +125,12 @@ export const AssignPlanTab = ({
   const [reasonOther, setReasonOther] = useState("");
   const [note, setNote] = useState("");
   const [invoiceChoice, setInvoiceChoice] = useState("none");
-  // Bank details
   const [bankDate, setBankDate] = useState(new Date());
   const [bankName, setBankName] = useState("");
   const [bankRef, setBankRef] = useState("");
   const [bankAmount, setBankAmount] = useState(seed.plan.price.toString());
   const [bankRemark, setBankRemark] = useState("");
 
-  // Reset form when opening dialog
   const openDialog = () => {
     setAction("assign");
     setPlanId(plan.id);
@@ -166,7 +163,6 @@ export const AssignPlanTab = ({
     let newExpiry = expiry;
     let newStatus = status;
 
-    // Apply action
     if (action === "assign") {
       newPlan = PLANS.find((p) => p.id === planId) || plan;
       newExpiry = expiryDate.toISOString();
@@ -238,7 +234,6 @@ export const AssignPlanTab = ({
       });
     }
 
-    // Invoice generation
     if (invoiceApplicable && invoiceChoice !== "none") {
       const isFinal = invoiceChoice === "final";
       if (isFinal) {
@@ -282,7 +277,6 @@ export const AssignPlanTab = ({
       }
     }
 
-    // Commit state
     setPlan(newPlan);
     setStatus(newStatus);
     setExpiry(newExpiry);
@@ -298,7 +292,6 @@ export const AssignPlanTab = ({
     setOpen(false);
   };
 
-  // Merge timeline + invoices into one chronological activity list
   const activityRows = useMemo(() => {
     const events = timeline.map((t) => ({
       key: `t-${t.id}`,
@@ -332,7 +325,6 @@ export const AssignPlanTab = ({
 
   return (
     <div className="space-y-5" data-testid="assign-plan-tab">
-      {/* Action bar */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="font-display text-xl font-semibold tracking-tight text-slate-900">
@@ -352,7 +344,6 @@ export const AssignPlanTab = ({
         </Button>
       </div>
 
-      {/* Activity + Invoice History Table */}
       <div className="bg-white border border-slate-200/80 rounded-xl shadow-sm">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
           <div>
@@ -456,7 +447,6 @@ export const AssignPlanTab = ({
         </div>
       </div>
 
-      {/* Action Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent data-testid="assign-action-dialog" className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>

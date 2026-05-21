@@ -15,8 +15,11 @@ import {
   Building2,
   Eye,
   ShieldCheck,
+  X,
+  EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -36,7 +39,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
-import { formatDate, relativeTime } from '@/lib/mockData';
+import { formatDate, relativeTime } from '@/lib/constants';
 import { toast } from 'sonner';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
@@ -76,12 +79,16 @@ const AUDIENCES = ['All Members', 'Charger suppliers', 'Electronics distributors
 export function BroadcastTab({ member, broadcasts, setBroadcasts }: BroadcastTabProps) {
   const [approvalRequired, setApprovalRequired] = useState(true);
 
-  // Modal state
   const [open, setOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedBroadcast, setSelectedBroadcast] = useState<BroadcastRecord | null>(null);
 
-  // Edit form states
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [hideOpen, setHideOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('Select a reason');
+  const [hideReason, setHideReason] = useState('Select a reason');
+  const [actionTargetId, setActionTargetId] = useState<string | null>(null);
+
   const [type, setType] = useState<'WTB' | 'WTS'>('WTB');
   const [condition, setCondition] = useState<'New' | 'Used'>('New');
   const [mainCat, setMainCat] = useState('Accessories');
@@ -143,7 +150,7 @@ export function BroadcastTab({ member, broadcasts, setBroadcasts }: BroadcastTab
     );
     toast.success('Broadcast details updated');
     setIsEditing(false);
-    setOpen(false); // Can also keep it open in viewing mode, but typical flow is to close
+    setOpen(false);
   };
 
   const updateStatus = (id: string, newStatus: BroadcastRecord['status']) => {
@@ -162,17 +169,19 @@ export function BroadcastTab({ member, broadcasts, setBroadcasts }: BroadcastTab
 
   const handleActionChange = (action: string) => {
     if (!selectedBroadcast) return;
-    if (action === 'hide') {
-      updateStatus(selectedBroadcast.id, 'Hidden');
-    } else if (action === 'reject') {
-      updateStatus(selectedBroadcast.id, 'Rejected');
-    }
+    setActionTargetId(selectedBroadcast.id);
     setOpen(false);
+    if (action === 'hide') {
+      setHideReason('Select a reason');
+      setHideOpen(true);
+    } else if (action === 'reject') {
+      setRejectReason('Select a reason');
+      setRejectOpen(true);
+    }
   };
 
   return (
     <div className="space-y-5" data-testid="broadcast-tab">
-      {/* Approval Required Card */}
       <div className="bg-white border border-slate-200/80 rounded-xl p-5 md:p-6 shadow-sm flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="h-10 w-10 rounded-lg border border-slate-100 bg-slate-50/50 flex items-center justify-center shrink-0">
@@ -197,9 +206,7 @@ export function BroadcastTab({ member, broadcasts, setBroadcasts }: BroadcastTab
         </div>
       </div>
 
-      {/* Main Broadcast Container */}
       <div className="bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
-        {/* Header */}
         <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4 bg-white">
           <div className="space-y-1">
             <h2 className="font-display text-xl font-semibold text-slate-900 tracking-tight">
@@ -218,7 +225,6 @@ export function BroadcastTab({ member, broadcasts, setBroadcasts }: BroadcastTab
         </div>
 
         <div className="relative w-full">
-          {/* LOG TAB */}
           <div className="w-full">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -518,6 +524,126 @@ export function BroadcastTab({ member, broadcasts, setBroadcasts }: BroadcastTab
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <DialogContent className="sm:max-w-[460px] bg-white rounded-xl shadow-xl border border-slate-200 p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="h-7 w-7 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <X className="h-3.5 w-3.5 text-red-600" />
+              </div>
+              <DialogTitle className="text-base font-bold text-slate-900 font-display">
+                Reject Broadcast
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-sm text-slate-500 mt-2 leading-relaxed">
+              Pick a reason{' '}
+              <span className="text-blue-600 font-medium">(reasons managed by admin)</span>
+              . Optionally add a short note for the audit log.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="px-6 py-5 space-y-4">
+            <div>
+              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                Reject Reason
+              </Label>
+              <Select value={rejectReason} onValueChange={setRejectReason}>
+                <SelectTrigger className="h-11 border-slate-200 bg-white text-sm text-slate-700 focus:ring-1 focus:ring-slate-900">
+                  <SelectValue placeholder="Select a reason" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border border-slate-200 z-[200]">
+                  <SelectItem value="inappropriate">Inappropriate Content</SelectItem>
+                  <SelectItem value="duplicate">Duplicate Broadcast</SelectItem>
+                  <SelectItem value="spam">Spam / Misleading</SelectItem>
+                  <SelectItem value="policy">Policy Violation</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="px-6 pb-6 flex items-center justify-end gap-2.5">
+            <Button
+              variant="outline"
+              className="h-9 px-4 text-xs font-semibold border-slate-200"
+              onClick={() => setRejectOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="h-9 px-4 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => {
+                if (actionTargetId) updateStatus(actionTargetId, 'Rejected');
+                setRejectOpen(false);
+                setActionTargetId(null);
+              }}
+            >
+              Confirm Reject
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={hideOpen} onOpenChange={setHideOpen}>
+        <DialogContent className="sm:max-w-[460px] bg-white rounded-xl shadow-xl border border-slate-200 p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="h-7 w-7 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                <EyeOff className="h-3.5 w-3.5 text-slate-600" />
+              </div>
+              <DialogTitle className="text-base font-bold text-slate-900 font-display">
+                Hide Broadcast
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-sm text-slate-500 mt-2 leading-relaxed">
+              Pick a reason{' '}
+              <span className="text-blue-600 font-medium">(reasons managed by admin)</span>
+              . Optionally add a short note for the audit log.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="px-6 py-5 space-y-4">
+            <div>
+              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+                Hide Reason
+              </Label>
+              <Select value={hideReason} onValueChange={setHideReason}>
+                <SelectTrigger className="h-11 border-slate-200 bg-white text-sm text-slate-700 focus:ring-1 focus:ring-slate-900">
+                  <SelectValue placeholder="Select a reason" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border border-slate-200 z-[200]">
+                  <SelectItem value="review">Under Review</SelectItem>
+                  <SelectItem value="outdated">Outdated Listing</SelectItem>
+                  <SelectItem value="owner_request">Owner Request</SelectItem>
+                  <SelectItem value="compliance">Compliance Hold</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="px-6 pb-6 flex items-center justify-end gap-2.5">
+            <Button
+              variant="outline"
+              className="h-9 px-4 text-xs font-semibold border-slate-200"
+              onClick={() => setHideOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="h-9 px-4 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white"
+              onClick={() => {
+                if (actionTargetId) updateStatus(actionTargetId, 'Hidden');
+                setHideOpen(false);
+                setActionTargetId(null);
+              }}
+            >
+              Confirm Hide
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -31,7 +31,6 @@ export const ActionPanel = ({ member, onApply }) => {
   const [action, setAction] = useState("assign");
   const [submitting, setSubmitting] = useState(false);
 
-  // Field state — reset when action or member changes
   const [planId, setPlanId] = useState(member.plan.id);
   const [startDate, setStartDate] = useState(new Date());
   const [expiryDate, setExpiryDate] = useState(() => {
@@ -63,20 +62,18 @@ export const ActionPanel = ({ member, onApply }) => {
     setInvoiceType("final");
   }, [member.id, action]);
 
-  // Auto-shift expiryDate if it's before startDate
   useEffect(() => {
     if (expiryDate < startDate) {
       const e = new Date(startDate);
       e.setDate(e.getDate() + 30);
       setExpiryDate(e);
     }
-  }, [startDate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [startDate]);
 
   const currentAction = ACTIONS.find((a) => a.id === action);
 
   const handleApply = async () => {
     setSubmitting(true);
-    // Build payload for the parent
     const payload = { action };
     if (action === "assign") {
       payload.plan = PLANS.find((p) => p.id === planId);
@@ -108,7 +105,6 @@ export const ActionPanel = ({ member, onApply }) => {
       payload.generateInvoice = true;
       payload.invoiceType = invoiceType;
     }
-    // Simulate brief async
     await new Promise((r) => setTimeout(r, 350));
     onApply(payload);
     setSubmitting(false);

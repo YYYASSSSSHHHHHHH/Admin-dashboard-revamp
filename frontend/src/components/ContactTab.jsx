@@ -81,13 +81,11 @@ export const ContactTab = ({ contacts: rawContacts, onChange }) => {
       let updated = contacts.map((c) =>
         c.id === editingId ? { ...form, id: editingId, photo } : c
       );
-      // If this one became Main, demote others
       if (form.isMain) {
         updated = updated.map((c) =>
           c.id === editingId ? c : { ...c, isMain: false }
         );
       } else if (!updated.some((c) => c.isMain)) {
-        // Always keep at least one Main — fallback to first
         updated = updated.map((c, i) => ({ ...c, isMain: i === 0 }));
       }
       onChange(updated);

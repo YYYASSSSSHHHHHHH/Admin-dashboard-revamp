@@ -13,36 +13,6 @@ interface Plan {
   features: string[];
 }
 
-const PLANS: Plan[] = [
-  {
-    id: "starter",
-    name: "Starter",
-    price: 19,
-    billing: "monthly",
-    features: ["1 storefront", "Up to 50 listings", "Basic analytics"],
-  },
-  {
-    id: "growth",
-    name: "Growth",
-    price: 49,
-    billing: "monthly",
-    features: ["3 storefronts", "Unlimited listings", "Advanced analytics", "Priority support"],
-  },
-  {
-    id: "scale",
-    name: "Scale",
-    price: 99,
-    billing: "monthly",
-    features: ["Unlimited storefronts", "API access", "Dedicated success manager"],
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    price: 249,
-    billing: "monthly",
-    features: ["Custom contracts", "SSO + SCIM", "24/7 SLA support"],
-  },
-];
 
 const ACCENTS = {
   starter: {
@@ -179,21 +149,27 @@ const PlanCard = ({ plan, members, accent }: PlanCardProps) => {
 
 export default function MembershipPlans() {
   const [members, setMembers] = useState<any[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchMembers() {
+    async function fetchData() {
       try {
-        const response = await fetch('/api/members');
-        const data = await response.json();
-        setMembers(data);
+        const [membersRes, plansRes] = await Promise.all([
+          fetch('/api/members'),
+          fetch('/api/plans')
+        ]);
+        const membersData = await membersRes.json();
+        const plansData = await plansRes.json();
+        setMembers(membersData);
+        setPlans(plansData);
       } catch (error) {
-        console.error('Error fetching members:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     }
-    fetchMembers();
+    fetchData();
   }, []);
 
   const totalMembers = members.length;
@@ -202,10 +178,10 @@ export default function MembershipPlans() {
     return members
       .filter((m) => m.status?.toLowerCase() === 'active')
       .reduce((sum, m) => {
-        const matchedPlan = PLANS.find((p) => isMemberOnPlan(m, p));
+        const matchedPlan = plans.find((p) => isMemberOnPlan(m, p));
         return sum + (matchedPlan ? matchedPlan.price : 0);
       }, 0);
-  }, [members]);
+  }, [members, plans]);
 
   return (
     <DashboardLayout>
@@ -225,7 +201,7 @@ export default function MembershipPlans() {
           <div className="flex gap-2">
             <div className="text-xs font-medium text-slate-700 bg-white border border-slate-200 px-3 py-2 rounded-md">
               <span className="text-slate-500">Plans · </span>
-              <span className="font-semibold text-slate-900">{PLANS.length}</span>
+              <span className="font-semibold text-slate-900">{plans.length}</span>
             </div>
             <div className="text-xs font-medium text-slate-700 bg-white border border-slate-200 px-3 py-2 rounded-md">
               <span className="text-slate-500">Total MRR · </span>
@@ -244,7 +220,7 @@ export default function MembershipPlans() {
           </div>
         ) : (
           <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-            {PLANS.map((plan) => {
+            {plans.map((plan) => {
               const planMembers = members.filter((m) => isMemberOnPlan(m, plan));
               return (
                 <PlanCard

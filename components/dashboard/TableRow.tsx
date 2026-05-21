@@ -33,12 +33,10 @@ export function TableRow({ member, index }: TableRowProps) {
       className="border-b hover:bg-slate-55 transition-colors bg-white cursor-pointer select-none" 
       style={{ borderColor: '#F1F5F9' }}
     >
-      {/* SR.NO */}
       <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs font-semibold">
         {String(index + 1).padStart(2, '0')}
       </td>
 
-      {/* MEMBER & COMPANY */}
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
           <MemberAvatar initials={member.initials} />
@@ -49,32 +47,26 @@ export function TableRow({ member, index }: TableRowProps) {
         </div>
       </td>
 
-      {/* LOCATION */}
       <td className="px-6 py-4 text-[13px] text-slate-650 font-medium whitespace-nowrap">
         {member.location}
       </td>
 
-      {/* EMAIL ADDRESS */}
       <td className="px-6 py-4 text-[13px] text-slate-650 font-medium">
         {member.email}
       </td>
 
-      {/* MOBILE NUMBER */}
       <td className="px-6 py-4 text-[13px] text-slate-650 font-medium whitespace-nowrap">
         {member.mobileNumber}
       </td>
 
-      {/* PLAN NAME */}
       <td className="px-6 py-4 text-[13px] text-slate-900 font-semibold whitespace-nowrap">
         {member.plan}
       </td>
 
-      {/* STATUS */}
       <td className="px-6 py-4">
         <StatusBadge status={member.status} />
       </td>
 
-      {/* JOIN DATE */}
       <td className="px-6 py-4 text-[13px] text-slate-650 font-medium whitespace-nowrap">
         {member.registrationDate}
       </td>

@@ -41,7 +41,7 @@ import {
   formatDate,
   relativeTime,
   Plan,
-} from '@/lib/mockData';
+} from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 

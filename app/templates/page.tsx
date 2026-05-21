@@ -56,7 +56,6 @@ interface TemplateItem {
 }
 
 export default function TemplatesPage() {
-  // Seed initial categories
   const [categories, setCategories] = useState<TemplateCategory[]>([
     { id: '1', name: 'Welcome Series', channel: 'email', status: 'active' },
     { id: '2', name: 'Billing Receipts', channel: 'email', status: 'active' },
@@ -65,7 +64,6 @@ export default function TemplatesPage() {
     { id: '5', name: 'System Maintenance Notices', channel: 'push', status: 'active' },
   ]);
 
-  // Seed initial templates
   const [templates, setTemplates] = useState<TemplateItem[]>([
     {
       id: '1',
@@ -115,35 +113,29 @@ export default function TemplatesPage() {
     }
   ]);
 
-  // State controls
   const [channelFilter, setChannelFilter] = useState<'email' | 'push'>('email');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('1');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Modals state
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<TemplateCategory | null>(null);
 
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<TemplateItem | null>(null);
 
-  // Category Form fields
   const [catFormName, setCatFormName] = useState('');
   const [catFormStatus, setCatFormStatus] = useState<string>('active');
 
-  // Template Form fields
   const [tempFormName, setTempFormName] = useState('');
   const [tempFormCategoryId, setTempFormCategoryId] = useState('');
   const [tempFormSubject, setTempFormSubject] = useState('');
   const [tempFormType, setTempFormType] = useState<'Transactional' | 'Marketing'>('Transactional');
   const [tempFormContent, setTempFormContent] = useState('');
 
-  // Filtered categories shown in Left column based on active channel
   const filteredCategories = useMemo(() => {
     return categories.filter(c => c.channel === channelFilter);
   }, [categories, channelFilter]);
 
-  // Dynamic template counts mapped to categories
   const categoryTemplateCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     categories.forEach(cat => {
@@ -152,7 +144,6 @@ export default function TemplatesPage() {
     return counts;
   }, [categories, templates]);
 
-  // Right column templates based on active category and search filter
   const filteredTemplates = useMemo(() => {
     return templates.filter(t => {
       const matchesCategory = t.categoryId === selectedCategoryId;
@@ -162,7 +153,6 @@ export default function TemplatesPage() {
     });
   }, [templates, selectedCategoryId, searchTerm]);
 
-  // Trigger select active category safely when changing channel tab
   const handleChannelTabChange = (channel: 'email' | 'push') => {
     setChannelFilter(channel);
     const firstCat = categories.find(c => c.channel === channel);
@@ -174,7 +164,6 @@ export default function TemplatesPage() {
     setSearchTerm('');
   };
 
-  // Open Category modal for Create or Edit
   const openCategoryModal = (cat?: TemplateCategory) => {
     setEditingCategory(cat || null);
     if (cat) {
@@ -228,7 +217,6 @@ export default function TemplatesPage() {
     toast.success('Category deleted successfully.');
   };
 
-  // Open Template modal for Create or Edit
   const openTemplateModal = (temp?: TemplateItem) => {
     setEditingTemplate(temp || null);
     if (temp) {
@@ -288,7 +276,6 @@ export default function TemplatesPage() {
     toast.success('Template deleted successfully.');
   };
 
-  // Placeholder injection logic
   const insertPlaceholder = (tag: string) => {
     setTempFormContent(prev => prev + ` ${tag}`);
     toast.info(`Placeholder ${tag} added to content.`);
@@ -301,7 +288,6 @@ export default function TemplatesPage() {
   return (
     <DashboardLayout>
       <div className="flex flex-col space-y-6">
-        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <Header
             title="Template Settings"
@@ -317,14 +303,11 @@ export default function TemplatesPage() {
           </Button>
         </div>
 
-        {/* Outer Split Layout */}
         <div className="flex flex-col lg:flex-row gap-6 items-stretch">
-          {/* Left Column: Categories List & Channel toggle */}
           <div
             className="w-full lg:w-72 bg-white border shrink-0 flex flex-col gap-1.5 h-fit p-4 shadow-sm"
             style={{ borderColor: '#E5E7EB', borderRadius: '12px' }}
           >
-            {/* Channel tabs container */}
             <div className="px-1 mb-2">
               <div className="flex items-center bg-slate-50/80 p-1 rounded-lg border border-slate-200/60">
                 <button
@@ -365,7 +348,6 @@ export default function TemplatesPage() {
               </button>
             </div>
 
-            {/* Categories List */}
             <div className="flex flex-col gap-1 overflow-y-auto max-h-[380px] pr-1">
               {filteredCategories.length === 0 ? (
                 <div className="text-center py-6 text-xs text-slate-400 font-medium">
@@ -394,7 +376,6 @@ export default function TemplatesPage() {
                         <span className="truncate">{cat.name}</span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                        {/* Edit/Delete triggers (only display on hover) */}
                         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={(e) => { e.stopPropagation(); openCategoryModal(cat); }}
@@ -422,12 +403,10 @@ export default function TemplatesPage() {
             </div>
           </div>
 
-          {/* Right Column: Template List Content */}
           <div
             className="flex-1 flex flex-col bg-white border overflow-hidden shadow-sm"
             style={{ borderColor: '#E5E7EB', borderRadius: '12px' }}
           >
-            {/* Header info */}
             <div
               className="p-4 border-b bg-white flex flex-col md:flex-row md:items-center justify-between gap-3"
               style={{ borderColor: '#EEF2F6' }}
@@ -448,7 +427,6 @@ export default function TemplatesPage() {
               </div>
             </div>
 
-            {/* Template List Table */}
             <div className="overflow-x-auto flex-1">
               <table className="w-full">
                 <thead className="bg-white border-b" style={{ borderColor: '#EEF2F6' }}>
@@ -475,23 +453,19 @@ export default function TemplatesPage() {
                           className="border-b hover:bg-slate-55 transition-colors bg-white select-none"
                           style={{ borderColor: '#F1F5F9' }}
                         >
-                          {/* S.No */}
                           <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs font-semibold">
                             {String(index + 1).padStart(2, '0')}
                           </td>
-                          {/* Template Name */}
                           <td className="px-6 py-4">
                             <span style={{ color: '#0F172A', fontSize: '13px', fontWeight: '600' }} className="whitespace-nowrap">
                               {temp.name}
                             </span>
                           </td>
-                          {/* Subject Line (email only) */}
                           {channelFilter === 'email' && (
                             <td className="px-6 py-4 text-[13px] text-slate-650 font-medium whitespace-nowrap">
                               {temp.subject || '-'}
                             </td>
                           )}
-                          {/* Type */}
                           <td className="px-6 py-4">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border ${
                               temp.type === 'Transactional'
@@ -501,7 +475,6 @@ export default function TemplatesPage() {
                               {temp.type}
                             </span>
                           </td>
-                          {/* Actions */}
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               <Button
@@ -530,7 +503,6 @@ export default function TemplatesPage() {
           </div>
         </div>
 
-        {/* Specialized Modal 1: Category Modal (650px width) */}
         <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
           <DialogContent className="sm:max-w-[650px] max-h-[90vh] flex flex-col overflow-hidden bg-white border border-slate-250 p-6 shadow-xl rounded-xl z-[100]">
             <DialogHeader className="pb-3 border-b border-slate-100">
@@ -546,7 +518,6 @@ export default function TemplatesPage() {
             </DialogHeader>
 
             <div className="flex-1 overflow-y-auto py-5 space-y-5">
-              {/* Category Name */}
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="cat-name" className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
                   Category Name
@@ -560,7 +531,6 @@ export default function TemplatesPage() {
                 />
               </div>
 
-              {/* Status Radio Selectors using global RadioGroup */}
               <div className="flex flex-col gap-2">
                 <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
                   Active Status
@@ -618,7 +588,6 @@ export default function TemplatesPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Specialized Modal 2: Template Modal (900px width) */}
         <Dialog open={templateModalOpen} onOpenChange={setTemplateModalOpen}>
           <DialogContent className="sm:max-w-4xl lg:max-w-[900px] max-h-[90vh] flex flex-col overflow-hidden bg-white border border-slate-250 p-6 shadow-xl rounded-xl z-[100]">
             <DialogHeader className="pb-3 border-b border-slate-100">
@@ -635,7 +604,6 @@ export default function TemplatesPage() {
 
             <div className="flex-1 overflow-y-auto py-5 space-y-4 pr-1">
               <div className="grid grid-cols-2 gap-4">
-                {/* Template Name */}
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="temp-name" className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
                     Template Name
@@ -649,7 +617,6 @@ export default function TemplatesPage() {
                   />
                 </div>
 
-                {/* Category Selection */}
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="temp-category" className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
                     Linked Category
@@ -667,7 +634,6 @@ export default function TemplatesPage() {
                 </div>
               </div>
 
-              {/* Dynamic Subject Line Input for Email layouts */}
               {channelFilter === 'email' && (
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="temp-subject" className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
@@ -683,7 +649,6 @@ export default function TemplatesPage() {
                 </div>
               )}
 
-              {/* Template Type Selector */}
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="temp-type" className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
                   Template Type
@@ -699,7 +664,6 @@ export default function TemplatesPage() {
                 </select>
               </div>
 
-              {/* Custom Rich Text Editor with Placeholders */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex justify-between items-center mb-1">
                   <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
@@ -711,7 +675,6 @@ export default function TemplatesPage() {
                   </span>
                 </div>
 
-                {/* Placeholders bar */}
                 <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-lg border border-slate-200 bg-slate-50/50 mb-1">
                   <button
                     type="button"
@@ -755,7 +718,6 @@ export default function TemplatesPage() {
                   </button>
                 </div>
 
-                {/* Editor Textarea with custom formatting toolbar */}
                 <div className="border border-slate-200 rounded-lg overflow-hidden flex flex-col focus-within:ring-1 focus-within:ring-slate-900">
                   <div className="bg-slate-50 border-b border-slate-200 px-3 py-1.5 flex flex-wrap items-center gap-1.5">
                     <button
