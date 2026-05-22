@@ -76,9 +76,9 @@ function frontendToPayload(b: FrontendBroadcast, record: BroadcastRecord) {
   };
 }
 
-function formatDateDisplay(isoString: string) {
+function formatDateDisplay(isoString: string): { date: string; time: string } {
   const d = new Date(isoString);
-  if (isNaN(d.getTime())) return isoString;
+  if (isNaN(d.getTime())) return { date: isoString, time: '' };
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const day = String(d.getDate()).padStart(2, '0');
   const month = months[d.getMonth()];
