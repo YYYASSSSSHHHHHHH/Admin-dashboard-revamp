@@ -1,6 +1,7 @@
 'use client';
 
 import { MemberAvatar } from './MemberAvatar';
+import { PlanBadge } from './PlanBadge';
 import { StatusBadge } from './StatusBadge';
 import { useRouter } from 'next/navigation';
 
@@ -59,8 +60,8 @@ export function TableRow({ member, index }: TableRowProps) {
         {member.mobileNumber}
       </td>
 
-      <td className="px-6 py-4 text-[13px] text-slate-900 font-semibold whitespace-nowrap">
-        {member.plan}
+      <td className="px-6 py-4">
+        <PlanBadge plan={member.plan} />
       </td>
 
       <td className="px-6 py-4">

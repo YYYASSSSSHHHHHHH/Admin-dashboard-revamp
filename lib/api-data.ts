@@ -75,7 +75,16 @@ export function getMemberDetail(memberId: string) {
     status: member.status === 'SUSPENDED' ? 'suspended' : 'active',
     expiry: member.expiryDate,
     plan,
-    companyDetails: { registrationNumber: 'REG-2026-1042', businessType: 'Distributor', website: 'https://example.com', taxId: 'GST-22AAAAA0000A1Z5', about: `${member.companyName} manages verified marketplace transactions and member broadcasts.` },
+    companyDetails: { 
+      registrationNumber: 'REG-2026-1042', 
+      businessType: 'Distributor', 
+      website: 'northwave.io', 
+      gstNo: '29ABCDE1234F1Z5', 
+      email: member.email,
+      contactNo1: member.mobileNumber,
+      contactNo2: '+1 415-555-0142',
+      aboutUs: `Boutique design studio crafting refined digital storefronts for premium brands worldwide.` 
+    },
     contacts: [{ id: 'primary', name: member.name, email: member.email, phone: member.mobileNumber, designation: 'Owner', isMain: true }],
     addresses: [{ id: 'office', title: 'Company Address', addressLine1: '42 Market Street', addressLine2: 'Business District', city: member.location.split(',')[0], state: member.location.split(',')[1]?.trim() || '', country: 'India', pincode: '400001' }],
     timeline: [{ id: 1, type: 'plan_assigned', title: 'Plan assigned', description: `${plan.name} plan activated`, at: '2026-05-01T09:30:00.000Z', actor: 'Admin' }],

@@ -9,8 +9,11 @@ import {
   Clock,
   Globe,
   Hash,
+  Mail,
   MapPin,
   PauseCircle,
+  Radio,
+  SlidersHorizontal,
   Users as UsersIcon,
   Wallet,
 } from "lucide-react";
@@ -20,11 +23,14 @@ import {
   TabsTrigger,
   TabsContent,
 } from "@/components/ui/tabs";
-import { MEMBERS, formatDate, relativeTime } from "@/data/mockData";
+import { MEMBERS, MOCK_BROADCASTS, MOCK_EMAILS, MOCK_BROADCAST_CATEGORIES, INITIAL_BROADCAST_SUBSCRIPTIONS, formatDate, relativeTime } from "@/data/mockData";
 import { CompanyTab } from "@/components/CompanyTab";
 import { ContactTab } from "@/components/ContactTab";
 import { AddressTab } from "@/components/AddressTab";
 import { AssignPlanTab } from "@/components/AssignPlanTab";
+import { BroadcastTab } from "@/components/BroadcastTab";
+import { BroadcastSettingTab } from "@/components/BroadcastSettingTab";
+import { EmailTab } from "@/components/EmailTab";
 
 const StatTile = ({ icon: Icon, label, value, accent = "bg-slate-50 text-slate-700 border border-slate-200" }) => (
   <div className="flex items-start gap-3 p-3 rounded-lg border border-slate-200/80 bg-white">
@@ -47,16 +53,29 @@ export default function MemberDetail() {
     [memberId]
   );
 
+  // Local editable state for tabs (mockup persistence within this screen)
   const [companyName, setCompanyName] = useState(seed.company);
   const [companyDetails, setCompanyDetails] = useState(seed.companyDetails);
   const [contacts, setContacts] = useState(seed.contacts);
   const [addresses, setAddresses] = useState(seed.addresses);
+  // Plan-related state shared between persistent header and AssignPlanTab
   const [plan, setPlan] = useState(seed.plan);
   const [status, setStatus] = useState(seed.status);
   const [expiry, setExpiry] = useState(seed.expiry);
   const [timeline, setTimeline] = useState(seed.timeline);
   const [invoices, setInvoices] = useState(() =>
     [seed.invoice, ...(seed.invoiceHistory || [])].filter(Boolean)
+  );
+  // Broadcast tab state
+  const [broadcasts, setBroadcasts] = useState(() =>
+    MOCK_BROADCASTS.map((b) => ({ ...b }))
+  );
+  const [approvalRequired, setApprovalRequired] = useState(true);
+  // Email tab state
+  const [emails, setEmails] = useState(() => MOCK_EMAILS.map((e) => ({ ...e })));
+  // Broadcast Setting (per-member category subscriptions)
+  const [broadcastSubscriptions, setBroadcastSubscriptions] = useState(
+    () => INITIAL_BROADCAST_SUBSCRIPTIONS[seed.id] || []
   );
 
   const handleCompanySave = (form) => {
@@ -69,6 +88,7 @@ export default function MemberDetail() {
 
   return (
     <div className="p-6 md:p-8 lg:p-10" data-testid="member-detail-page">
+      {/* Back link */}
       <Link
         to="/members"
         data-testid="member-detail-back"
@@ -78,6 +98,7 @@ export default function MemberDetail() {
         Back to Members
       </Link>
 
+      {/* Persistent stats header (visible across all tabs) */}
       <header
         data-testid="persistent-header"
         className="bg-white border border-slate-200/80 rounded-xl shadow-sm p-6 mb-6"
@@ -133,6 +154,7 @@ export default function MemberDetail() {
         </div>
       </header>
 
+      {/* Tabs */}
       <Tabs defaultValue="company" data-testid="member-detail-tabs">
         <TabsList className="bg-white border border-slate-200/80 h-11 p-1 rounded-lg shadow-sm mb-5">
           <TabsTrigger
@@ -173,6 +195,39 @@ export default function MemberDetail() {
             <Wallet className="h-3.5 w-3.5 mr-2" />
             Assign Plan
           </TabsTrigger>
+          <TabsTrigger
+            value="broadcast"
+            data-testid="tab-broadcast"
+            className="h-9 px-4 data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 rounded-md transition-all"
+          >
+            <Radio className="h-3.5 w-3.5 mr-2" />
+            Broadcast
+            <span className="ml-2 text-[10px] font-semibold tabular-nums opacity-70">
+              {broadcasts.length}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="broadcast-setting"
+            data-testid="tab-broadcast-setting"
+            className="h-9 px-4 data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 rounded-md transition-all"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5 mr-2" />
+            Broadcast Setting
+            <span className="ml-2 text-[10px] font-semibold tabular-nums opacity-70">
+              {broadcastSubscriptions.length}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="email"
+            data-testid="tab-email"
+            className="h-9 px-4 data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 rounded-md transition-all"
+          >
+            <Mail className="h-3.5 w-3.5 mr-2" />
+            Email
+            <span className="ml-2 text-[10px] font-semibold tabular-nums opacity-70">
+              {emails.length}
+            </span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="company" className="mt-0">
@@ -205,6 +260,29 @@ export default function MemberDetail() {
             invoices={invoices}
             setInvoices={setInvoices}
           />
+        </TabsContent>
+
+        <TabsContent value="broadcast" className="mt-0">
+          <BroadcastTab
+            companyName={companyName}
+            broadcasts={broadcasts}
+            setBroadcasts={setBroadcasts}
+            approvalRequired={approvalRequired}
+            setApprovalRequired={setApprovalRequired}
+          />
+        </TabsContent>
+
+        <TabsContent value="broadcast-setting" className="mt-0">
+          <BroadcastSettingTab
+            categories={MOCK_BROADCAST_CATEGORIES}
+            subscriptions={broadcastSubscriptions}
+            onChange={setBroadcastSubscriptions}
+            memberName={seed.name}
+          />
+        </TabsContent>
+
+        <TabsContent value="email" className="mt-0">
+          <EmailTab emails={emails} setEmails={setEmails} member={seed} />
         </TabsContent>
       </Tabs>
     </div>

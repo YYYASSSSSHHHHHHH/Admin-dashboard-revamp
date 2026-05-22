@@ -94,6 +94,7 @@ export default function Members() {
       </header>
 
       <div className="bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
+        {/* Toolbar */}
         <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
@@ -131,6 +132,7 @@ export default function Members() {
           </Select>
         </div>
 
+        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm" data-testid="members-table">
             <thead>

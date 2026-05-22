@@ -185,8 +185,8 @@ export default function MembershipPlans() {
 
   return (
     <DashboardLayout>
-      <div data-testid="plans-page">
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 pt-5">
+      <div data-testid="plans-page" className="p-6 md:p-8 lg:p-10">
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 mb-1.5">
               Catalog

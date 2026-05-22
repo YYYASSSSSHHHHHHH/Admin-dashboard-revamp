@@ -6,12 +6,14 @@ import {
   Sparkles,
   LifeBuoy,
   Settings,
+  SlidersHorizontal,
 } from "lucide-react";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/members", label: "Members", icon: Users },
   { to: "/plans", label: "Membership Plans", icon: Package },
+  { to: "/master-setup", label: "Master Setup", icon: SlidersHorizontal },
 ];
 
 const SECONDARY = [

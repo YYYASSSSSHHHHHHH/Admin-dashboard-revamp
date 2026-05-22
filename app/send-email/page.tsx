@@ -118,8 +118,7 @@ export default function SendEmailPage() {
 
   return (
     <DashboardLayout>
-      <div data-testid="send-email-page">
-
+      <div data-testid="send-email-page" className="p-6 md:p-8 lg:p-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-5">
           <Header
             title="Send Email Notification"

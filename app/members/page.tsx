@@ -84,7 +84,7 @@ export default function MembersPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="p-6 md:p-8 lg:p-10 flex items-center justify-center min-h-screen">
           <p className="text-foreground/60">Loading members...</p>
         </div>
       </DashboardLayout>
@@ -93,7 +93,7 @@ export default function MembersPage() {
 
   return (
     <DashboardLayout>
-      <div>
+      <div className="p-6 md:p-8 lg:p-10">
         <div className="mb-5">
           <Header
             title="Members"

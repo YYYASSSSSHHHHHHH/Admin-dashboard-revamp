@@ -1,6 +1,6 @@
 'use client';
 
-import MemberDetail from '../page';
+import { MemberDetail } from '@/components/dashboard/MemberDetail';
 
 export default function ManagePlanPage() {
   return <MemberDetail defaultTab="assign-plan" />;

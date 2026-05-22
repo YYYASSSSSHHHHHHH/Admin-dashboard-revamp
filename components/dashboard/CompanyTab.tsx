@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Building2, Mail, Phone, Globe, FileText, Pencil, Check, X, Upload } from 'lucide-react';
+import { Building2, Mail, Phone, Globe, FileText, Pencil, Check, X, UserPen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,8 @@ interface CompanyDetails {
   photo?: string;
   website?: string;
   email?: string;
-  phone?: string;
+  contactNo1?: string;
+  contactNo2?: string;
   gstNo?: string;
   aboutUs?: string;
 }
@@ -70,8 +71,14 @@ export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
-          setForm((prev) => ({ ...prev, photo: event.target!.result as string }));
-          toast.success('Logo uploaded successfully');
+          const base64 = event.target.result as string;
+          setForm((prev) => ({ ...prev, photo: base64 }));
+          if (editing) {
+            toast.success('Logo updated (click Save to apply all changes)');
+          } else {
+            onSave({ companyName, ...details, photo: base64 });
+            toast.success('Logo uploaded successfully');
+          }
         }
       };
       reader.readAsDataURL(file);
@@ -91,13 +98,38 @@ export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
       data-testid="company-tab"
       className="bg-white border border-slate-200/80 rounded-xl shadow-sm"
     >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/jpg,image/png"
+        className="hidden"
+        onChange={handleFileChange}
+      />
       <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-4">
-          <div className="h-14 w-14 rounded-xl bg-slate-900 text-white flex items-center justify-center font-display text-lg font-semibold overflow-hidden shrink-0 border border-slate-200">
-            {isImage(details.photo) ? (
-              <img src={details.photo} alt={companyName} className="h-full w-full object-cover" />
+          <div
+            onClick={() => {
+              fileInputRef.current?.click();
+            }}
+            className="h-14 w-14 rounded-xl bg-slate-900 text-white flex items-center justify-center font-display text-lg font-semibold overflow-hidden shrink-0 border border-slate-200 relative cursor-pointer hover:bg-slate-800 transition-colors group"
+          >
+            {isImage(editing ? form.photo : details.photo) ? (
+              <>
+                <img
+                  src={editing ? form.photo : details.photo}
+                  alt={companyName}
+                  className="h-full w-full object-cover"
+                />
+                <div
+                  className={`absolute inset-0 bg-black/40 flex items-center justify-center text-white transition-opacity duration-200 ${
+                    editing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
+                >
+                  <UserPen className="h-6 w-6" />
+                </div>
+              </>
             ) : (
-              '?'
+              <UserPen className="h-6 w-6" />
             )}
           </div>
           <div>
@@ -144,10 +176,11 @@ export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
         {!editing ? (
           <div className="grid grid-cols-1 md:grid-cols-2 md:gap-x-8">
             <Row icon={Building2} label="Company Name" value={companyName} />
-            <Row icon={Mail} label="Email" value={details.email} />
-            <Row icon={Phone} label="Phone" value={details.phone} />
-            <Row icon={Globe} label="Website" value={details.website} />
             <Row icon={FileText} label="GST No." value={details.gstNo} />
+            <Row icon={Mail} label="Email" value={details.email} />
+            <Row icon={Globe} label="Website" value={details.website} />
+            <Row icon={Phone} label="Phone No. 1" value={details.contactNo1} />
+            <Row icon={Phone} label="Phone No. 2" value={details.contactNo2} />
             <div className="md:col-span-2 pt-4">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 mb-2">
                 About Us
@@ -159,48 +192,19 @@ export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="md:col-span-2 border-b border-slate-100 pb-5 mb-1">
-              <Field label="Company Logo">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-5 mt-2">
-                  <div className="h-16 w-16 rounded-xl bg-slate-900 text-white flex items-center justify-center font-display text-lg font-semibold overflow-hidden shrink-0 border border-slate-200/50 shadow-sm">
-                    {isImage(form.photo) ? (
-                      <img src={form.photo} alt="Logo preview" className="h-full w-full object-cover" />
-                    ) : (
-                      '?'
-                    )}
-                  </div>
-                  <div className="flex-1 space-y-3">
-                    <div className="flex gap-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-9 relative overflow-hidden"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <Upload className="h-3.5 w-3.5 mr-2" />
-                        Upload Image
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleFileChange}
-                        />
-                      </Button>
-                    </div>
-                    <p className="text-[10px] text-slate-500 font-medium leading-relaxed max-w-sm">
-                      Upload an image file (SVG, PNG, JPG). Recommended size is 120x120px.
-                    </p>
-                  </div>
-                </div>
-              </Field>
-            </div>
-
             <Field label="Company Name">
               <Input
                 data-testid="company-name-input"
-                value={form.companyName}
+                value={form.companyName || ''}
                 onChange={(e) => setForm({ ...form, companyName: e.target.value })}
+                className="h-11"
+              />
+            </Field>
+            <Field label="GST No.">
+              <Input
+                data-testid="company-gst-input"
+                value={form.gstNo || ''}
+                onChange={(e) => setForm({ ...form, gstNo: e.target.value })}
                 className="h-11"
               />
             </Field>
@@ -213,14 +217,6 @@ export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
                 className="h-11"
               />
             </Field>
-            <Field label="Phone No.">
-              <Input
-                data-testid="company-phone-input"
-                value={form.phone || ''}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="h-11"
-              />
-            </Field>
             <Field label="Website">
               <Input
                 data-testid="company-website-input"
@@ -229,11 +225,19 @@ export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
                 className="h-11"
               />
             </Field>
-            <Field label="GST No.">
+            <Field label="Phone No. 1">
               <Input
-                data-testid="company-gst-input"
-                value={form.gstNo || ''}
-                onChange={(e) => setForm({ ...form, gstNo: e.target.value })}
+                data-testid="company-contact1-input"
+                value={form.contactNo1 || ''}
+                onChange={(e) => setForm({ ...form, contactNo1: e.target.value })}
+                className="h-11"
+              />
+            </Field>
+            <Field label="Phone No. 2">
+              <Input
+                data-testid="company-contact2-input"
+                value={form.contactNo2 || ''}
+                onChange={(e) => setForm({ ...form, contactNo2: e.target.value })}
                 className="h-11"
               />
             </Field>
@@ -254,3 +258,4 @@ export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
     </div>
   );
 }
+

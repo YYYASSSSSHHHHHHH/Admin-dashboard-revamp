@@ -119,7 +119,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="p-6 md:p-8 lg:p-10 flex items-center justify-center min-h-[50vh]">
           <p className="text-slate-500">Loading dashboard...</p>
         </div>
       </DashboardLayout>
@@ -137,7 +137,7 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      <div data-testid="dashboard-page">
+      <div className="p-6 md:p-8 lg:p-10" data-testid="dashboard-page">
         <div className="mb-8">
           <Header
             title="Dashboard"

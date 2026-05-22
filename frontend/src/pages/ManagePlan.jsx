@@ -102,6 +102,7 @@ export default function ManagePlan() {
         description: payload.proration ? "Charged with proration" : "Will charge next cycle",
       });
     }
+    // Optional invoice generation alongside the action
     if (payload.generateInvoice) {
       const targetPlan = payload.plan || member.plan;
       generateInvoiceFor(targetPlan, payload.invoiceType);
@@ -175,6 +176,7 @@ export default function ManagePlan() {
   return (
     <div className="min-h-screen bg-slate-50" data-testid="manage-plan-page">
       <div className="max-w-[1280px] mx-auto px-5 md:px-8 lg:px-10 py-8 md:py-10">
+        {/* Back link */}
         <Link
           to="/members"
           data-testid="manage-plan-back"
@@ -184,6 +186,7 @@ export default function ManagePlan() {
           Back to Members
         </Link>
 
+        {/* Header */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-10">
           <div className="flex items-start gap-3">
             <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 mt-1">
@@ -213,8 +216,10 @@ export default function ManagePlan() {
           </div>
         </header>
 
+        {/* Status Overview */}
         <StatusOverview member={member} />
 
+        {/* Main Action + Invoice */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
           <ActionPanel member={member} onApply={handleApply} />
           <InvoicePanel
@@ -227,6 +232,7 @@ export default function ManagePlan() {
           />
         </div>
 
+        {/* Activity Timeline */}
         <ActivityTimeline events={member.timeline} />
 
         <footer className="mt-12 text-center text-xs text-slate-400">

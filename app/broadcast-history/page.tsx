@@ -182,7 +182,7 @@ export default function BroadcastHistoryPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6" data-testid="broadcast-history-page">
+      <div className="p-6 md:p-8 lg:p-10 space-y-6" data-testid="broadcast-history-page">
         <Header
           title="Broadcast History"
           subtitle="Audit ledger of all sent broadcast feeds, search queries, and platform-wide market notifications."

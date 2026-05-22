@@ -307,7 +307,7 @@ export default function InvoicesPage() {
   if (!isMounted) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="p-6 md:p-8 lg:p-10 flex items-center justify-center min-h-[50vh]">
           <p className="text-slate-500 font-medium animate-pulse">Loading Invoice Ledger...</p>
         </div>
       </DashboardLayout>
@@ -316,7 +316,7 @@ export default function InvoicesPage() {
 
   return (
     <DashboardLayout>
-      <div data-testid="invoice-management-page" className="space-y-0">
+      <div data-testid="invoice-management-page" className="p-6 md:p-8 lg:p-10 space-y-0">
         
         <div className="mb-5">
           <Header

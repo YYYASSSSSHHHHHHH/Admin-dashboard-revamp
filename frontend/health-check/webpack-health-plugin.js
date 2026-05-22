@@ -1,8 +1,10 @@
+// webpack-health-plugin.js
+// Webpack plugin that tracks compilation state and health metrics
 
 class WebpackHealthPlugin {
   constructor() {
     this.status = {
-      state: 'idle',
+      state: 'idle',           // idle, compiling, success, failed
       errors: [],
       warnings: [],
       lastCompileTime: null,
@@ -16,6 +18,7 @@ class WebpackHealthPlugin {
   apply(compiler) {
     const pluginName = 'WebpackHealthPlugin';
 
+    // Hook: Compilation started
     compiler.hooks.compile.tap(pluginName, () => {
       const now = Date.now();
       this.status.state = 'compiling';
@@ -26,6 +29,7 @@ class WebpackHealthPlugin {
       }
     });
 
+    // Hook: Compilation completed
     compiler.hooks.done.tap(pluginName, (stats) => {
       const info = stats.toJson({
         all: false,
@@ -61,6 +65,7 @@ class WebpackHealthPlugin {
       }
     });
 
+    // Hook: Compilation failed
     compiler.hooks.failed.tap(pluginName, (error) => {
       this.status.state = 'failed';
       this.status.errors = [{
@@ -70,6 +75,7 @@ class WebpackHealthPlugin {
       this.status.compileDuration = Date.now() - this.status.lastCompileTime;
     });
 
+    // Hook: Invalid (file changed, recompiling)
     compiler.hooks.invalid.tap(pluginName, () => {
       this.status.state = 'compiling';
     });
@@ -78,6 +84,7 @@ class WebpackHealthPlugin {
   getStatus() {
     return {
       ...this.status,
+      // Add computed fields
       isHealthy: this.status.state === 'success',
       errorCount: this.status.errors.length,
       warningCount: this.status.warnings.length,
@@ -85,6 +92,7 @@ class WebpackHealthPlugin {
     };
   }
 
+  // Get simplified status for quick checks
   getSimpleStatus() {
     return {
       state: this.status.state,
@@ -94,6 +102,7 @@ class WebpackHealthPlugin {
     };
   }
 
+  // Reset statistics (useful for testing)
   reset() {
     this.status = {
       state: 'idle',

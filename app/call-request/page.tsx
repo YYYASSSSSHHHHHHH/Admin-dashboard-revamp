@@ -123,7 +123,7 @@ export default function CallRequestsPage() {
 
   return (
     <DashboardLayout>
-      <div>
+      <div className="p-6 md:p-8 lg:p-10">
         <div className="mb-5">
           <Header
             title="Callback Requests"
