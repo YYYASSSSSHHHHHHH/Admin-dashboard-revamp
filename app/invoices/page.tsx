@@ -61,6 +61,8 @@ import {
 } from '@/components/ui/popover';
 import { SearchBar } from '@/components/dashboard/SearchBar';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
+import { RECIPIENT_BANKS, PAYMENT_MODES } from '@/lib/invoice-utils';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface BankSettlement {
@@ -151,22 +153,42 @@ export default function InvoicesPage() {
   const triggerStatusEdit = (inv: InvoiceRecord) => {
     setSelectedInvoice(inv);
     setEditStatus(inv.status);
-    
+
     if (inv.status === 'Paid' && inv.settlementDetails) {
       setPayDate(inv.settlementDetails.settlementDate);
-      setPayMode(inv.settlementDetails.paymentMode);
+      setPayMode(inv.settlementDetails.paymentMode || 'Bank Transfer');
       setPayRef(inv.settlementDetails.referenceNumber);
       setPayAmt(inv.settlementDetails.amountPaid);
       setPayBank(inv.settlementDetails.recipientBank);
     } else {
-      setPayDate(inv.creationDate);
+      setPayDate('');
       setPayMode('Bank Transfer');
       setPayRef('');
-      setPayAmt(inv.billingAmount);
-      setPayBank('HDFC Bank');
+      setPayAmt('');
+      setPayBank('');
     }
     setStatusDialogOpen(true);
   };
+
+  const handleEditStatusChange = (stat: 'Paid' | 'Unpaid' | 'Cancel') => {
+    setEditStatus(stat);
+    if (stat === 'Paid' && selectedInvoice) {
+      setPayAmt((prev) => prev || selectedInvoice.billingAmount);
+      setPayDate((prev) => prev || selectedInvoice.creationDate);
+      setPayMode((prev) => prev || 'Bank Transfer');
+      setPayBank((prev) => prev || RECIPIENT_BANKS[0]);
+    }
+  };
+
+  const settlementFieldsActive = editStatus === 'Paid';
+  const settlementInputClass = cn(
+    'h-10 w-full text-sm border-slate-200',
+    settlementFieldsActive ? 'bg-white' : 'bg-slate-100/80 text-slate-400 placeholder:text-slate-300',
+  );
+  const settlementSelectTriggerClass = cn(
+    'h-10 w-full font-normal border-slate-200',
+    settlementFieldsActive ? 'bg-white' : 'bg-slate-100/80 text-slate-400',
+  );
 
   const handleStatusSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -525,43 +547,54 @@ export default function InvoicesPage() {
                                 <DollarSign className="h-3.5 w-3.5 text-slate-400" /> Bank Settlement Details
                               </h4>
                               
-                              {inv.status !== 'Paid' || !inv.settlementDetails ? (
-                                <div className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-lg max-w-lg">
-                                  <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
-                                  <p className="text-xs text-slate-500">
-                                    No transaction audit ledger available. These fields remain empty/hidden for unpaid or cancelled records.
-                                  </p>
-                                </div>
-                              ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 max-w-5xl bg-white border border-slate-200 p-4 rounded-xl shadow-xs">
-                                  
-                                  <div className="flex flex-col gap-1">
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Settlement Date</span>
-                                    <span className="text-xs font-semibold text-slate-800">{inv.settlementDetails.settlementDate}</span>
+                              <div
+                                className={cn(
+                                  'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 max-w-5xl bg-white border border-slate-200 p-4 rounded-xl shadow-xs',
+                                  (inv.status !== 'Paid' || !inv.settlementDetails) && 'bg-slate-50/80',
+                                )}
+                              >
+                                {[
+                                  {
+                                    label: 'Settlement Date',
+                                    value: inv.settlementDetails?.settlementDate,
+                                    valueClass: 'text-slate-800',
+                                  },
+                                  {
+                                    label: 'Amount Paid',
+                                    value: inv.settlementDetails?.amountPaid,
+                                    valueClass: 'text-emerald-700 font-mono',
+                                  },
+                                  {
+                                    label: 'Recipient Bank',
+                                    value: inv.settlementDetails?.recipientBank,
+                                    valueClass: 'text-slate-800',
+                                  },
+                                  {
+                                    label: 'Payment Mode',
+                                    value: inv.settlementDetails?.paymentMode,
+                                    valueClass: 'text-slate-800',
+                                  },
+                                  {
+                                    label: 'Reference Number',
+                                    value: inv.settlementDetails?.referenceNumber,
+                                    valueClass: 'text-slate-700 font-mono',
+                                  },
+                                ].map((field) => (
+                                  <div key={field.label} className="flex flex-col gap-1">
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+                                      {field.label}
+                                    </span>
+                                    <span
+                                      className={cn(
+                                        'text-xs font-semibold min-h-[16px]',
+                                        field.value ? field.valueClass : 'text-slate-300 font-normal',
+                                      )}
+                                    >
+                                      {field.value || '—'}
+                                    </span>
                                   </div>
-
-                                  <div className="flex flex-col gap-1">
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Amount Paid</span>
-                                    <span className="text-xs font-bold text-emerald-700 font-mono">{inv.settlementDetails.amountPaid}</span>
-                                  </div>
-
-                                  <div className="flex flex-col gap-1">
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Recipient Bank</span>
-                                    <span className="text-xs font-semibold text-slate-800">{inv.settlementDetails.recipientBank}</span>
-                                  </div>
-
-                                  <div className="flex flex-col gap-1">
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Payment Mode</span>
-                                    <span className="text-xs font-semibold text-slate-850">{inv.settlementDetails.paymentMode}</span>
-                                  </div>
-
-                                  <div className="flex flex-col gap-1">
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Reference Number</span>
-                                    <span className="text-xs font-bold text-slate-700 font-mono">{inv.settlementDetails.referenceNumber}</span>
-                                  </div>
-
-                                </div>
-                              )}
+                                ))}
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -601,7 +634,7 @@ export default function InvoicesPage() {
                         type="radio" 
                         name="edit-status-group" 
                         checked={editStatus === stat} 
-                        onChange={() => setEditStatus(stat)} 
+                        onChange={() => handleEditStatusChange(stat)} 
                         className="h-4 w-4 accent-slate-900 cursor-pointer" 
                       />
                       {stat}
@@ -610,83 +643,113 @@ export default function InvoicesPage() {
                 </div>
               </div>
 
-              {editStatus === 'Paid' && (
-                <div className="pt-4 border-t border-dashed border-slate-200 space-y-4 animate-none">
+              <div
+                className={cn(
+                  'pt-4 border-t border-dashed border-slate-200 space-y-4 min-h-[248px]',
+                  !settlementFieldsActive && 'opacity-90',
+                )}
+              >
+                <div className="flex items-center justify-between gap-2">
                   <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Bank Settlement Audit Variables
                   </h4>
+                  {!settlementFieldsActive && (
+                    <span className="text-[10px] font-medium text-slate-400 italic">
+                      Available when status is Paid
+                    </span>
+                  )}
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="pay-date" className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Payment Date</Label>
-                      <Input 
-                        id="pay-date" 
-                        type="text" 
-                        placeholder="e.g. 24-Apr-2026" 
-                        value={payDate} 
-                        onChange={(e) => setPayDate(e.target.value)} 
-                        className="h-10 text-xs bg-slate-50/50 border-slate-200 text-sm focus:bg-white animate-none" 
-                        required 
-                      />
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Payment Date
+                    </Label>
+                    <Input
+                      id="pay-date"
+                      type="text"
+                      placeholder="e.g. 24-Apr-2026"
+                      value={settlementFieldsActive ? payDate : ''}
+                      onChange={(e) => setPayDate(e.target.value)}
+                      disabled={!settlementFieldsActive}
+                      className={settlementInputClass}
+                    />
+                  </div>
 
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="pay-amt" className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Amount Paid</Label>
-                      <Input 
-                        id="pay-amt" 
-                        type="text" 
-                        placeholder="e.g. ₹ 5,000" 
-                        value={payAmt} 
-                        onChange={(e) => setPayAmt(e.target.value)} 
-                        className="h-10 text-xs bg-slate-50/50 border-slate-200 text-sm focus:bg-white animate-none font-mono" 
-                        required 
-                      />
-                    </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Amount Paid
+                    </Label>
+                    <Input
+                      id="pay-amt"
+                      type="text"
+                      placeholder="e.g. ₹ 5,000"
+                      value={settlementFieldsActive ? payAmt : ''}
+                      onChange={(e) => setPayAmt(e.target.value)}
+                      disabled={!settlementFieldsActive}
+                      className={cn(settlementInputClass, 'font-mono')}
+                    />
+                  </div>
 
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="pay-bank" className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Recipient Bank</Label>
-                      <Input 
-                        id="pay-bank" 
-                        placeholder="e.g. HDFC Bank" 
-                        value={payBank} 
-                        onChange={(e) => setPayBank(e.target.value)} 
-                        className="h-10 text-xs bg-slate-50/50 border-slate-200 text-sm focus:bg-white animate-none" 
-                        required 
-                      />
-                    </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Bank Name
+                    </Label>
+                    <Select
+                      value={settlementFieldsActive ? payBank || undefined : undefined}
+                      onValueChange={(val) => setPayBank(val)}
+                      disabled={!settlementFieldsActive}
+                    >
+                      <SelectTrigger className={settlementSelectTriggerClass}>
+                        <SelectValue placeholder="Select bank" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RECIPIENT_BANKS.map((bank) => (
+                          <SelectItem key={bank} value={bank}>
+                            {bank}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                    <div className="flex flex-col gap-1.5">
-                      <Label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Payment Mode</Label>
-                      <Select 
-                        value={payMode} 
-                        onValueChange={(val: any) => setPayMode(val)}
-                      >
-                        <SelectTrigger className="h-10 bg-slate-50/50 text-xs border-slate-200"><SelectValue /></SelectTrigger>
-                        <SelectContent className="bg-white border border-slate-200 z-[120]">
-                          <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                          <SelectItem value="Cash">Cash</SelectItem>
-                          <SelectItem value="Check">Check</SelectItem>
-                          <SelectItem value="UPI / QR">UPI / QR</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Reference No.
+                    </Label>
+                    <Input
+                      id="pay-ref"
+                      placeholder="UTR / Txn ID"
+                      value={settlementFieldsActive ? payRef : ''}
+                      onChange={(e) => setPayRef(e.target.value)}
+                      disabled={!settlementFieldsActive}
+                      className={cn(settlementInputClass, 'font-mono')}
+                    />
+                  </div>
 
-                    <div className="flex flex-col gap-1.5 md:col-span-2">
-                      <Label htmlFor="pay-ref" className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Transaction Reference Number</Label>
-                      <Input 
-                        id="pay-ref" 
-                        placeholder="e.g. TXN9928341" 
-                        value={payRef} 
-                        onChange={(e) => setPayRef(e.target.value)} 
-                        className="h-10 text-xs bg-slate-50/50 border-slate-200 text-sm focus:bg-white font-mono animate-none" 
-                        required 
-                      />
-                    </div>
-
+                  <div className="flex flex-col gap-1.5 md:col-span-2">
+                    <Label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Payment Mode
+                    </Label>
+                    <Select
+                      value={settlementFieldsActive ? payMode || undefined : undefined}
+                      onValueChange={(val) => setPayMode(val as typeof payMode)}
+                      disabled={!settlementFieldsActive}
+                    >
+                      <SelectTrigger className={settlementSelectTriggerClass}>
+                        <SelectValue placeholder="Select payment mode" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_MODES.map((mode) => (
+                          <SelectItem key={mode} value={mode}>
+                            {mode}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-              )}
+              </div>
 
               <DialogFooter className="pt-4 border-t border-slate-100 gap-2">
                 <Button 

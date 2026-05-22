@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { formatDate } from '@/lib/constants';
@@ -15,22 +15,42 @@ interface LoginRecord {
   macAddress: string;
 }
 
+function normalizeLoginLog(log: Record<string, unknown>, index: number): LoginRecord {
+  return {
+    id: String(log.id ?? `log-${index + 1}`),
+    serial: typeof log.serial === 'number' ? log.serial : index + 1,
+    timestamp: String(log.timestamp ?? log.at ?? ''),
+    ipAddress: String(log.ipAddress ?? log.ip ?? '—'),
+    deviceId: String(log.deviceId ?? log.device ?? '—'),
+    geoInfo: String(log.geoInfo ?? log.location ?? log.geo ?? '—'),
+    macAddress: String(log.macAddress ?? log.mac ?? '—'),
+  };
+}
+
 interface LoginLogTabProps {
-  logs: LoginRecord[];
+  logs: LoginRecord[] | Record<string, unknown>[];
 }
 
 export function LoginLogTab({ logs }: LoginLogTabProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredLogs = logs.filter((log) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      log.ipAddress.toLowerCase().includes(query) ||
-      log.deviceId.toLowerCase().includes(query) ||
-      log.geoInfo.toLowerCase().includes(query) ||
-      log.macAddress.toLowerCase().includes(query)
+  const normalizedLogs = useMemo(
+    () => logs.map((log, index) => normalizeLoginLog(log as Record<string, unknown>, index)),
+    [logs],
+  );
+
+  const filteredLogs = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return normalizedLogs;
+    const matches = (value: string) => value.toLowerCase().includes(query);
+    return normalizedLogs.filter(
+      (log) =>
+        matches(log.ipAddress) ||
+        matches(log.deviceId) ||
+        matches(log.geoInfo) ||
+        matches(log.macAddress),
     );
-  });
+  }, [normalizedLogs, searchQuery]);
 
   return (
     <div className="space-y-5" data-testid="login-log-tab">
@@ -45,21 +65,16 @@ export function LoginLogTab({ logs }: LoginLogTabProps) {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="relative w-64">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                data-testid="login-log-search"
-                type="text"
-                placeholder="Search history logs..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-10 text-xs bg-white border-slate-200 focus-visible:ring-1"
-              />
-            </div>
-            <span className="text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg h-10 flex items-center justify-center">
-              {filteredLogs.length} sessions
-            </span>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              data-testid="login-log-search"
+              type="text"
+              placeholder="Search history logs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10 text-xs bg-white border-slate-200 focus-visible:ring-1"
+            />
           </div>
         </div>
 

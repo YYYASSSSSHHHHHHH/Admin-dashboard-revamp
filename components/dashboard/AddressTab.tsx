@@ -64,15 +64,21 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
 
 const titleLabel = (id: string) => ADDRESS_TITLES.find((t) => t.id === id)?.label || id;
 
-export function AddressTab({ addresses, onChange }: AddressTabProps) {
+// Logic to ensure there is always a default address
+const hasAnyDefault = (list: Address[]) => list.some((a) => a.isDefault);
+const withDefaultFallback = (list: Address[]) =>
+  hasAnyDefault(list) ? list : list.map((a, i) => ({ ...a, isDefault: i === 0 }));
+
+export function AddressTab({ addresses: rawAddresses = [], onChange }: AddressTabProps) {
+  const addresses = withDefaultFallback(rawAddresses);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<Omit<Address, 'id'>>({ ...emptyAddress });
+  const [form, setForm] = useState<Omit<Address, 'id'> & { isDefault?: boolean }>({ ...emptyAddress });
 
   const openAdd = () => {
     if (addresses.length >= MAX_ADDRESSES) return;
     setEditingId(null);
-    setForm(emptyAddress);
+    setForm({ ...emptyAddress, isDefault: addresses.length === 0 });
     setOpen(true);
   };
 
@@ -91,19 +97,55 @@ export function AddressTab({ addresses, onChange }: AddressTabProps) {
       toast.error('City and pin code are required');
       return;
     }
+
     if (editingId) {
-      onChange(addresses.map((a) => (a.id === editingId ? { ...form, id: editingId } : a)));
+      let updated = addresses.map((a) => (a.id === editingId ? { ...form, id: editingId } : a));
+      
+      // If this one became Default, demote others
+      if (form.isDefault) {
+        updated = updated.map((a) =>
+          a.id === editingId ? a : { ...a, isDefault: false }
+        );
+      } else if (!updated.some((a) => a.isDefault)) {
+        // Always keep at least one Default — fallback to first
+        updated = updated.map((a, i) => ({ ...a, isDefault: i === 0 }));
+      }
+      
+      onChange(updated);
       toast.success('Address updated');
     } else {
-      onChange([...addresses, { ...form, id: `a${Date.now()}` }]);
+      const isFirst = addresses.length === 0;
+      const newAddress: Address = { 
+        ...form, 
+        id: `a${Date.now()}`, 
+        isDefault: !!form.isDefault || isFirst 
+      };
+      
+      let next = [...addresses, newAddress];
+      if (newAddress.isDefault) {
+        next = next.map((a) =>
+          a.id === newAddress.id ? a : { ...a, isDefault: false }
+        );
+      }
+      onChange(next);
       toast.success('Address added');
     }
     setOpen(false);
   };
 
   const handleDelete = (id: string) => {
-    onChange(addresses.filter((a) => a.id !== id));
+    let next = addresses.filter((a) => a.id !== id);
+    if (next.length && !next.some((a) => a.isDefault)) {
+      next = next.map((a, i) => ({ ...a, isDefault: i === 0 }));
+    }
+    onChange(next);
     toast.success('Address removed');
+  };
+
+  const handleMarkAsDefault = (id: string) => {
+    const next = addresses.map((a) => ({ ...a, isDefault: a.id === id }));
+    onChange(next);
+    toast.success('Marked as Default Address');
   };
 
   return (
@@ -131,17 +173,27 @@ export function AddressTab({ addresses, onChange }: AddressTabProps) {
           </Button>
         </div>
 
-        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           {addresses.length === 0 ? (
             <div
               data-testid="address-empty"
-              className="md:col-span-3 text-sm text-slate-500 text-center py-10 border border-dashed border-slate-200 rounded-lg"
+              className="md:col-span-2 text-sm text-slate-500 text-center py-10 border border-dashed border-slate-200 rounded-lg"
             >
               No addresses yet. Add one to get started.
             </div>
           ) : (
             addresses.map((a) => {
-              const Icon = a.title === 'company' || a.title === 'work' ? Briefcase : MapPin;
+              // Determine Icon
+              const Icon = a.title === 'home' ? Home : (a.title === 'company' || a.title === 'work' ? Briefcase : MapPin);
+              
+              // Determine Colour based on title (matching frontend folder design)
+              let iconColorClass = 'bg-slate-50 text-slate-600 border-slate-100';
+              if (a.title === 'home') {
+                iconColorClass = 'bg-violet-50 text-violet-600 border-violet-100';
+              } else if (a.title === 'company' || a.title === 'work') {
+                iconColorClass = 'bg-blue-50 text-blue-600 border-blue-100';
+              }
+
               return (
                 <div
                   key={a.id}
@@ -154,11 +206,7 @@ export function AddressTab({ addresses, onChange }: AddressTabProps) {
                 >
                   <div className="flex items-start gap-3">
                     <div
-                      className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 ${
-                        a.isDefault
-                          ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                          : 'bg-slate-50 text-slate-600 border border-slate-100'
-                      }`}
+                      className={`h-10 w-10 rounded-lg flex items-center justify-center shrink-0 border ${iconColorClass}`}
                     >
                       <Icon className="h-4 w-4" />
                     </div>
@@ -183,25 +231,41 @@ export function AddressTab({ addresses, onChange }: AddressTabProps) {
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end gap-2 text-slate-600">
-                    <button
-                      type="button"
-                      data-testid={`address-delete-${a.id}`}
-                      onClick={() => handleDelete(a.id)}
-                      className="text-xs font-medium text-slate-500 hover:text-red-600 px-2.5 py-1.5 rounded-md hover:bg-red-50 transition-colors inline-flex items-center gap-1.5"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                      Remove
-                    </button>
-                    <button
-                      type="button"
-                      data-testid={`address-edit-${a.id}`}
-                      onClick={() => openEdit(a)}
-                      className="text-xs font-medium text-slate-900 border border-slate-200 hover:bg-slate-900 hover:text-white hover:border-slate-900 px-2.5 py-1.5 rounded-md transition-all inline-flex items-center gap-1.5"
-                    >
-                      <Pencil className="h-3 w-3" />
-                      Edit
-                    </button>
+                  
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap text-slate-600">
+                    <div>
+                      {!a.isDefault && (
+                        <button
+                          type="button"
+                          data-testid={`address-mark-default-${a.id}`}
+                          onClick={() => handleMarkAsDefault(a.id)}
+                          className="text-xs font-medium text-blue-700 hover:text-blue-800 px-2.5 py-1.5 rounded-md hover:bg-blue-50 transition-colors inline-flex items-center gap-1.5"
+                        >
+                          <Star className="h-3 w-3" />
+                          Mark as Default
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 ml-auto">
+                      <button
+                        type="button"
+                        data-testid={`address-delete-${a.id}`}
+                        onClick={() => handleDelete(a.id)}
+                        className="text-xs font-medium text-slate-500 hover:text-red-600 px-2.5 py-1.5 rounded-md hover:bg-red-50 transition-colors inline-flex items-center gap-1.5"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Remove
+                      </button>
+                      <button
+                        type="button"
+                        data-testid={`address-edit-${a.id}`}
+                        onClick={() => openEdit(a)}
+                        className="text-xs font-medium text-slate-900 border border-slate-200 hover:bg-slate-900 hover:text-white hover:border-slate-900 px-2.5 py-1.5 rounded-md transition-all inline-flex items-center gap-1.5"
+                      >
+                        <Pencil className="h-3 w-3" />
+                        Edit
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -293,36 +357,46 @@ export function AddressTab({ addresses, onChange }: AddressTabProps) {
               />
             </Field>
 
-            <div className="md:col-span-2">
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={!!form.isDefault}
-                  onChange={(e) => setForm({ ...form, isDefault: e.target.checked })}
-                  className="h-4 w-4 rounded border-slate-300 text-slate-900 accent-slate-900 cursor-pointer"
-                />
-                <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 group-hover:text-slate-700 transition-colors">Set as Default</span>
-              </label>
+            <div className="md:col-span-2 mt-2">
+              {form.isDefault ? (
+                <div
+                  data-testid="dialog-default-address-badge"
+                  className="flex items-center justify-between p-3.5 rounded-lg border border-blue-200 bg-blue-50/60"
+                >
+                  <div className="flex items-center gap-2">
+                    <Star className="h-4 w-4 text-blue-600 fill-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <Label className="text-sm font-medium text-blue-900">
+                        Default Address
+                      </Label>
+                      <p className="text-xs text-blue-700/80 mt-0.5">
+                        This is the primary address for the member.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  data-testid="dialog-mark-as-default"
+                  variant="outline"
+                  onClick={() => setForm({ ...form, isDefault: true })}
+                  className="w-full h-11 border-dashed border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800"
+                >
+                  <Star className="h-4 w-4 mr-2" />
+                  Mark as Default Address
+                </Button>
+              )}
             </div>
           </div>
 
           <DialogFooter className="mt-3">
-            {editingId && (
-              <Button
-                data-testid="address-dialog-delete"
-                variant="outline"
-                onClick={() => { handleDelete(editingId); setOpen(false); }}
-                className="mr-auto border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
-              >
-                Delete
-              </Button>
-            )}
             <Button
               data-testid="address-dialog-cancel"
               variant="outline"
               onClick={() => setOpen(false)}
             >
-              Close
+              Cancel
             </Button>
             <Button
               data-testid="address-dialog-save"

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, Fragment } from 'react';
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -12,6 +12,10 @@ import {
   PlayCircle,
   FileText,
   Undo2,
+  ChevronDown,
+  ChevronUp,
+  DollarSign,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import {
   ACTIONS,
   PLANS,
@@ -43,6 +48,7 @@ import {
   Plan,
 } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { RECIPIENT_BANKS } from '@/lib/invoice-utils';
 import { toast } from 'sonner';
 
 const INVOICE_CHOICES = [
@@ -81,15 +87,39 @@ const ICONS: Record<string, any> = {
 
 interface Invoice {
   id: string;
+  invoiceNumber?: string;
   amount: number;
   type: 'final' | 'proforma';
   status: string;
   issuedAt: string;
   dueDate: string;
+  planName?: string;
+  validityStart?: string;
+  validityEnd?: string;
   bankName?: string;
   bankRef?: string;
   bankRemark?: string;
   paidOn?: string;
+}
+
+function formatTableDate(dateInput: string) {
+  if (!dateInput) return '—';
+  const parsed = new Date(dateInput);
+  if (Number.isNaN(parsed.getTime())) return dateInput;
+  const day = String(parsed.getDate()).padStart(2, '0');
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${day}-${months[parsed.getMonth()]}-${parsed.getFullYear()}`;
+}
+
+function invoiceStatusLabel(status: string) {
+  const normalized = status.toLowerCase();
+  if (normalized === 'paid') return 'PAID';
+  if (normalized === 'pending' || normalized === 'unpaid' || normalized === 'overdue') return 'UNPAID';
+  return 'N/A';
+}
+
+function formatInrAmount(amount: number) {
+  return `₹ ${amount.toLocaleString('en-IN')}`;
 }
 
 interface TimelineEvent {
@@ -154,6 +184,10 @@ export function AssignPlanTab({
   const [bankAmount, setBankAmount] = useState(plan.price.toString());
   const [bankRemark, setBankRemark] = useState('');
   const [markPaid, setMarkPaid] = useState(false);
+
+  // New states for toggling views and expanding invoice rows
+  const [viewMode, setViewMode] = useState<'activity' | 'invoices'>('activity');
+  const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
 
   const openDialog = () => {
     setAction('assign');
@@ -273,11 +307,15 @@ export function AssignPlanTab({
       const amount = shouldRecordPayment ? parseFloat(bankAmount) || newPlan.price : newPlan.price;
       newInvoice = {
         id: invoiceId,
+        invoiceNumber: invoiceId,
         amount,
         type: isFinal ? 'final' : 'proforma',
         status: isFinal ? (shouldRecordPayment ? 'paid' : 'pending') : 'draft',
         issuedAt: nowIso,
         dueDate: addDaysIso(nowIso, 14),
+        planName: newPlan.name,
+        validityStart: formatTableDate(startDate.toISOString()),
+        validityEnd: formatTableDate(newExpiry),
         bankName: shouldRecordPayment ? bankName : undefined,
         bankRef: shouldRecordPayment ? bankRef : undefined,
         bankRemark: shouldRecordPayment ? bankRemark : undefined,
@@ -309,6 +347,19 @@ export function AssignPlanTab({
     setTimeline((prev) => [...events, ...prev]);
     if (newInvoice) setInvoices((prev) => [newInvoice, ...prev]);
 
+    fetch(`/api/members/${seed.id}/plan-action`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action,
+        plan: newPlan,
+        status: newStatus,
+        expiry: newExpiry,
+        timelineEvents: events,
+        invoice: newInvoice,
+      }),
+    }).catch((error) => console.error('Failed to save plan action:', error));
+
     const actionLabel = ACTIONS.find((a) => a.id === action)?.label || action;
     toast.success(`${actionLabel} applied`, {
       description: newInvoice
@@ -320,143 +371,351 @@ export function AssignPlanTab({
 
   const activityRows = useMemo(() => {
     const events = timeline.map((t) => ({
-      key: `t-${t.id}`,
-      kind: 'event',
-      type: t.type,
-      title: t.title,
-      description: t.description,
-      at: t.at,
-      actor: t.actor,
-      amount: null as number | null,
-      status: null as string | null,
-    }));
-    const invs = invoices.map((i) => ({
-      key: `i-${i.id}`,
+        key: `t-${t.id}`,
+        kind: 'event',
+        type: t.type,
+        title: t.title,
+        description: t.description,
+        at: t.at,
+        actor: t.actor,
+        amount: null as number | null,
+        status: null as string | null,
+      }));
+    const invoiceEvents = invoices.map((invoice) => ({
+      key: `i-${invoice.id}`,
       kind: 'invoice',
       type: 'invoice',
-      title: `${i.type === 'proforma' ? 'Proforma' : 'Invoice'} ${i.id}`,
-      description:
-        i.bankName
-          ? `${i.bankName} · Ref ${i.bankRef}${i.bankRemark ? ` · ${i.bankRemark}` : ''}`
-          : `${i.type === 'proforma' ? 'Proforma' : 'Final'} invoice`,
-      at: i.issuedAt,
+      title: `${invoice.type === 'proforma' ? 'Proforma' : 'Invoice'} ${invoice.id}`,
+      description: invoice.bankName
+        ? `${invoice.bankName} · Ref ${invoice.bankRef || '—'}${invoice.bankRemark ? ` · ${invoice.bankRemark}` : ''}`
+        : `${invoice.type === 'proforma' ? 'Proforma' : 'Final'} invoice`,
+      at: invoice.issuedAt,
       actor: 'System',
-      amount: i.amount,
-      status: i.status,
+      amount: invoice.amount,
+      status: invoice.status,
     }));
-    return [...events, ...invs].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+
+    return [...events, ...invoiceEvents].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
   }, [timeline, invoices]);
+
+  const invoiceHistoryRows = useMemo(
+    () =>
+      invoices
+        .map((inv) => ({
+          key: inv.id,
+          rowDate: inv.issuedAt,
+          planName: inv.planName || plan.name,
+          validityStart: inv.validityStart || formatTableDate(inv.issuedAt),
+          validityEnd: inv.validityEnd || expiry || '—',
+          invoiceNumber: inv.invoiceNumber || inv.id,
+          invoiceDate: inv.issuedAt,
+          amount: inv.amount,
+          status: invoiceStatusLabel(inv.status),
+          invoice: inv,
+        }))
+        .sort((a, b) => new Date(b.rowDate).getTime() - new Date(a.rowDate).getTime()),
+    [invoices, plan.name, expiry],
+  );
 
   return (
     <div className="space-y-5" data-testid="assign-plan-tab">
-      <div className="bg-white border border-slate-200/80 rounded-xl shadow-sm">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
+      <div className="bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-100 flex items-start justify-between flex-wrap gap-4">
           <div>
-            <h2 className="font-display text-xl font-semibold text-slate-900 tracking-tight">
-              Assign Plan
+            <h2 className="font-display text-xl font-semibold tracking-tight text-slate-900">
+              Plan History
             </h2>
             <p className="text-sm text-slate-500 mt-0.5">
-              Apply plan actions and generate invoices for this member.
+              {viewMode === 'activity'
+                ? `${activityRows.length} events · Comprehensive audit log`
+                : `${invoiceHistoryRows.length} invoices · Comprehensive audit log`}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span
-              data-testid="activity-count"
-              className="text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-md"
-            >
-              {activityRows.length} records
-            </span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 bg-slate-100/80 p-1 rounded-lg border border-slate-200/60">
+              <button
+                type="button"
+                onClick={() => setViewMode('activity')}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                  viewMode === 'activity'
+                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                }`}
+              >
+                Activity
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode('invoices');
+                  setExpandedInvoiceId(null);
+                }}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                  viewMode === 'invoices'
+                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+                }`}
+              >
+                Invoices
+              </button>
+            </div>
             <Button
               data-testid="assign-action-btn"
               onClick={openDialog}
-              className="h-10 bg-slate-900 hover:bg-slate-800 text-white"
+              className="h-10 px-4 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs"
             >
               <Settings2 className="h-4 w-4 mr-2" />
               Manage Plan
             </Button>
           </div>
         </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-sm" data-testid="activity-table">
-            <thead>
-              <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 border-b border-slate-100">
-                <th className="px-6 py-3">Date</th>
-                <th className="px-6 py-3">Type</th>
-                <th className="px-6 py-3">Description</th>
-                <th className="px-6 py-3">Actor</th>
-                <th className="px-6 py-3 text-right">Amount / Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {activityRows.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-500">
-                    No activity yet.
-                  </td>
+          {viewMode === 'activity' ? (
+            <table className="w-full text-sm" data-testid="activity-table">
+              <thead>
+                <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 border-b border-slate-100">
+                  <th className="px-6 py-3 w-16 text-center">SR.NO</th>
+                  <th className="px-6 py-3">Date</th>
+                  <th className="px-6 py-3">Type</th>
+                  <th className="px-6 py-3">Description</th>
+                  <th className="px-6 py-3">Actor</th>
+                  <th className="px-6 py-3 text-right">Amount / Status</th>
                 </tr>
-              ) : (
-                activityRows.map((r) => {
-                  const Icon = ICONS[r.type] || Plus;
-                  return (
-                    <tr
-                      key={r.key}
-                      data-testid={`activity-row-${r.key}`}
-                      className="hover:bg-slate-50/50 transition-colors"
-                    >
-                      <td className="px-6 py-3 whitespace-nowrap">
-                        <div className="font-medium text-slate-900">{formatDate(r.at)}</div>
-                        <div className="text-[11px] text-slate-500 font-mono">
-                          {relativeTime(r.at)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-3">
-                        <div className="inline-flex items-center gap-2">
-                          <span
-                            className={`h-7 w-7 rounded-full flex items-center justify-center ${r.kind === 'invoice'
-                                ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                                : 'bg-slate-100 text-slate-700 border border-slate-200'
-                              }`}
-                          >
-                            <Icon className="h-3.5 w-3.5" />
-                          </span>
-                          <span className="text-sm font-medium text-slate-900">{r.title}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-3 text-slate-700 max-w-md">
-                        <span className="line-clamp-2">{r.description}</span>
-                      </td>
-                      <td className="px-6 py-3 text-slate-500 text-xs whitespace-nowrap">
-                        {r.actor}
-                      </td>
-                      <td className="px-6 py-3 text-right whitespace-nowrap">
-                        {r.amount != null ? (
-                          <div>
-                            <div className="font-medium text-slate-900 font-mono">
-                              ${r.amount.toFixed(2)}
-                            </div>
-                            <div
-                              className={`text-[10px] font-semibold uppercase tracking-wider mt-0.5 ${r.status === 'paid'
-                                  ? 'text-emerald-700'
-                                  : r.status === 'overdue'
-                                    ? 'text-red-700'
-                                    : r.status === 'pending'
-                                      ? 'text-amber-700'
-                                      : 'text-slate-500'
-                                }`}
-                            >
-                              {r.status || '—'}
-                            </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {activityRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-500">
+                      No activity yet.
+                    </td>
+                  </tr>
+                ) : (
+                  activityRows.map((r, index) => {
+                    const Icon = ICONS[r.type] || Plus;
+                    return (
+                      <tr
+                        key={r.key}
+                        data-testid={`activity-row-${r.key}`}
+                        className="hover:bg-slate-50/50 transition-colors"
+                      >
+                        <td className="px-6 py-3 text-center text-slate-400 font-mono text-xs font-semibold">
+                          {String(index + 1).padStart(2, '0')}
+                        </td>
+                        <td className="px-6 py-3 whitespace-nowrap">
+                          <div className="font-semibold text-slate-900 text-[13px]">{formatDate(r.at)}</div>
+                          <div className="text-[11px] text-slate-500 font-mono">
+                            {relativeTime(r.at)}
                           </div>
-                        ) : (
-                          <span className="text-slate-400 text-xs">—</span>
+                        </td>
+                        <td className="px-6 py-3">
+                          <div className="inline-flex items-center gap-2">
+                            <span
+                              className={`h-7 w-7 rounded-full flex items-center justify-center ${
+                                r.kind === 'invoice'
+                                  ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                                  : 'bg-slate-100 text-slate-700 border border-slate-200'
+                              }`}
+                            >
+                              <Icon className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="text-sm font-medium text-slate-900">{r.title}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-3 text-slate-700 max-w-xl">
+                          <span className="line-clamp-2">{r.description}</span>
+                        </td>
+                        <td className="px-6 py-3 text-slate-500 text-xs whitespace-nowrap">
+                          {r.actor}
+                        </td>
+                        <td className="px-6 py-3 text-right whitespace-nowrap">
+                          {r.amount != null ? (
+                            <div>
+                              <div className="font-medium text-slate-900 font-mono">
+                                ${r.amount.toFixed(2)}
+                              </div>
+                              <div
+                                className={`text-[10px] font-semibold uppercase tracking-wider mt-0.5 ${
+                                  r.status === 'paid'
+                                    ? 'text-emerald-700'
+                                    : r.status === 'overdue'
+                                      ? 'text-red-700'
+                                      : r.status === 'pending'
+                                        ? 'text-amber-700'
+                                        : 'text-slate-500'
+                                }`}
+                              >
+                                {r.status || '—'}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-xs">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full text-sm" data-testid="invoice-table">
+              <thead>
+                <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 border-b border-slate-100">
+                  <th className="px-6 py-3 w-16 text-center">SR NO</th>
+                  <th className="px-6 py-3">Date</th>
+                  <th className="px-6 py-3">Plan &amp; Validity</th>
+                  <th className="px-6 py-3">Invoice</th>
+                  <th className="px-6 py-3">Amount</th>
+                  <th className="px-6 py-3">Status</th>
+                  <th className="px-4 py-3 text-center w-14">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {invoiceHistoryRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-500">
+                      No invoices found.
+                    </td>
+                  </tr>
+                ) : (
+                  invoiceHistoryRows.map((row, index) => {
+                    const inv = row.invoice;
+                    const isExpanded = expandedInvoiceId === inv.id;
+                    return (
+                      <Fragment key={row.key}>
+                        <tr className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs font-semibold">
+                            {String(index + 1).padStart(2, '0')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="font-semibold text-slate-900 text-[13px]">
+                              {formatTableDate(row.rowDate)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-semibold text-slate-900 text-[13px]">
+                                {row.planName}
+                              </span>
+                              <span className="text-xs text-slate-500">
+                                {row.validityStart} to {row.validityEnd}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-medium text-slate-900 text-[13px]">
+                                {row.invoiceNumber}
+                              </span>
+                              <span className="text-xs text-slate-500">
+                                {formatTableDate(row.invoiceDate)}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900 text-[13px]">
+                            {formatInrAmount(row.amount)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <StatusBadge status={row.status} />
+                          </td>
+                          <td className="px-4 py-4 text-center">
+                            <button
+                              type="button"
+                              className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                              onClick={() =>
+                                setExpandedInvoiceId(isExpanded ? null : inv.id)
+                              }
+                              aria-label={isExpanded ? 'Collapse settlement' : 'Expand settlement'}
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="h-3.5 w-3.5" />
+                              ) : (
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr className="bg-slate-50/50">
+                            <td colSpan={7} className="px-4 py-2 border-b border-slate-100">
+                              <div className="rounded-lg border border-blue-200/80 bg-blue-50/40 px-3 py-2">
+                                <div className="flex items-center justify-between gap-2 mb-1.5">
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border bg-blue-50 text-blue-700 border-blue-200">
+                                    <DollarSign className="h-3 w-3" />
+                                    Invoice Settlement
+                                  </span>
+                                  <span className="text-[10px] font-semibold text-blue-700/90 truncate">
+                                    {inv.invoiceNumber || inv.id}
+                                  </span>
+                                </div>
+
+                                {inv.status !== 'paid' ? (
+                                  <p className="text-xs text-slate-600 leading-snug flex items-center gap-1.5 py-1">
+                                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                                    No transaction audit ledger for this unpaid or draft invoice.
+                                  </p>
+                                ) : (
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                                    {[
+                                      {
+                                        label: 'Settlement Date',
+                                        value: inv.paidOn ? formatTableDate(inv.paidOn) : '—',
+                                        valueClass: 'text-slate-900',
+                                      },
+                                      {
+                                        label: 'Amount Paid',
+                                        value: formatInrAmount(inv.amount),
+                                        valueClass: 'text-emerald-700',
+                                      },
+                                      {
+                                        label: 'Recipient Bank',
+                                        value: inv.bankName || '—',
+                                        valueClass: 'text-slate-900',
+                                      },
+                                      {
+                                        label: 'Reference Number',
+                                        value: inv.bankRef || '—',
+                                        valueClass: 'text-slate-900 font-mono',
+                                      },
+                                    ].map((item) => (
+                                      <div
+                                        key={item.label}
+                                        className="rounded-md bg-white border border-blue-100/80 px-2 py-1.5 min-w-0"
+                                      >
+                                        <div className="text-[9px] font-bold text-blue-600 uppercase tracking-wide truncate">
+                                          {item.label}
+                                        </div>
+                                        <div
+                                          className={`text-xs font-semibold mt-0.5 truncate ${item.valueClass}`}
+                                        >
+                                          {item.value}
+                                        </div>
+                                      </div>
+                                    ))}
+                                    {inv.bankRemark && (
+                                      <div className="col-span-2 sm:col-span-4 rounded-md bg-white border border-blue-100/80 px-2 py-1.5">
+                                        <div className="text-[9px] font-bold text-blue-600 uppercase tracking-wide">
+                                          Remark
+                                        </div>
+                                        <div className="text-xs text-slate-700 mt-0.5 line-clamp-2">
+                                          {inv.bankRemark}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
                         )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                      </Fragment>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 
@@ -720,13 +979,18 @@ export function AssignPlanTab({
                             </Popover>
                           </Field>
                           <Field label="Bank Name">
-                            <Input
-                              data-testid="bank-name"
-                              value={bankName}
-                              onChange={(e) => setBankName(e.target.value)}
-                              className="h-10 bg-white"
-                              placeholder="e.g. HDFC Bank"
-                            />
+                            <Select value={bankName || undefined} onValueChange={setBankName}>
+                              <SelectTrigger data-testid="bank-name" className="h-10 bg-white">
+                                <SelectValue placeholder="Select bank" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {RECIPIENT_BANKS.map((bank) => (
+                                  <SelectItem key={bank} value={bank}>
+                                    {bank}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </Field>
                           <Field label="Reference No.">
                             <Input

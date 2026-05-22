@@ -68,8 +68,13 @@ const initialsOf = (first = '', last = '') =>
 const designationLabel = (id: string) =>
   DESIGNATIONS.find((d) => d.id === id)?.label || id;
 
-export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps) {
-  const contacts = rawContacts;
+// Added missing logic from JSX file to prevent breaking when initializing data
+const hasAnyMain = (list: Contact[]) => list.some((c) => c.isMain);
+const withMainDefault = (list: Contact[]) =>
+  hasAnyMain(list) ? list : list.map((c, i) => ({ ...c, isMain: i === 0 }));
+
+export function ContactTab({ contacts: rawContacts = [], onChange }: ContactTabProps) {
+  const contacts = withMainDefault(rawContacts);
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Contact, 'id'> & { isMain?: boolean }>({ ...emptyContact, isMain: false });
@@ -77,7 +82,7 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
   const openAdd = () => {
     if (contacts.length >= MAX_CONTACTS) return;
     setEditingId(null);
-    setForm({ ...emptyContact, isMain: false });
+    setForm({ ...emptyContact, isMain: contacts.length === 0 });
     setOpen(true);
   };
 
@@ -95,23 +100,29 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
     const photo = form.photo && (form.photo.startsWith('data:image/') || form.photo.startsWith('http') || form.photo.includes('/'))
       ? form.photo 
       : initialsOf(form.firstName, form.lastName);
+      
     if (editingId) {
       let updated = contacts.map((c) =>
         c.id === editingId ? { ...form, id: editingId, photo } : c
       );
+      // If this one became Main, demote others
       if (form.isMain) {
         updated = updated.map((c) =>
           c.id === editingId ? c : { ...c, isMain: false }
         );
+      } else if (!updated.some((c) => c.isMain)) {
+        // Always keep at least one Main — fallback to first
+        updated = updated.map((c, i) => ({ ...c, isMain: i === 0 }));
       }
       onChange(updated);
       toast.success('Contact updated');
     } else {
+      const isFirst = contacts.length === 0;
       const newContact: Contact = {
         ...form,
         id: `c${Date.now()}`,
         photo,
-        isMain: !!form.isMain,
+        isMain: !!form.isMain || isFirst,
       };
       let next = [...contacts, newContact];
       if (newContact.isMain) {
@@ -126,7 +137,10 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
   };
 
   const handleDelete = (id: string) => {
-    const next = contacts.filter((c) => c.id !== id);
+    let next = contacts.filter((c) => c.id !== id);
+    if (next.length && !next.some((c) => c.isMain)) {
+      next = next.map((c, i) => ({ ...c, isMain: i === 0 }));
+    }
     onChange(next);
     toast.success('Contact removed');
   };
@@ -161,11 +175,11 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
           </Button>
         </div>
 
-        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           {contacts.length === 0 ? (
             <div
               data-testid="contact-empty"
-              className="md:col-span-3 text-sm text-slate-500 text-center py-10 border border-dashed border-slate-200 rounded-lg"
+              className="md:col-span-2 text-sm text-slate-500 text-center py-10 border border-dashed border-slate-200 rounded-lg"
             >
               No contacts yet. Add one to get started.
             </div>
@@ -423,28 +437,17 @@ export function ContactTab({ contacts: rawContacts, onChange }: ContactTabProps)
               {form.isMain ? (
                 <div
                   data-testid="dialog-main-contact-badge"
-                  className="flex items-center justify-between p-3.5 rounded-lg border border-blue-200 bg-blue-50/60"
+                  className="flex items-center gap-2 p-3.5 rounded-lg border border-blue-200 bg-blue-50/60"
                 >
-                  <div className="flex items-center gap-2">
-                    <Star className="h-4 w-4 text-blue-600 fill-blue-600 shrink-0 mt-0.5" />
-                    <div>
-                      <Label className="text-sm font-medium text-blue-900">
-                        Main Contact
-                      </Label>
-                      <p className="text-xs text-blue-700/80 mt-0.5">
-                        This is the primary contact for the member.
-                      </p>
-                    </div>
+                  <Star className="h-4 w-4 text-blue-600 fill-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <Label className="text-sm font-medium text-blue-900">
+                      Main Contact
+                    </Label>
+                    <p className="text-xs text-blue-700/80 mt-0.5">
+                      This is the primary contact for the member.
+                    </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setForm({ ...form, isMain: false })}
-                    className="text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 h-8 px-2.5 rounded-md"
-                  >
-                    Unmark
-                  </Button>
                 </div>
               ) : (
                 <Button

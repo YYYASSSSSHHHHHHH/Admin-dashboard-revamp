@@ -34,8 +34,9 @@ interface Template {
   id: string;
   name: string;
   subject: string;
-  body: string;
-  categoryId: number;
+  body?: string;
+  content?: string;
+  categoryId: string | number;
 }
 
 const CATEGORIES = [
@@ -45,34 +46,11 @@ const CATEGORIES = [
   { id: 3, name: 'System Announcements' },
 ];
 
-const TEMPLATES: Template[] = [
-  {
-    id: 't-1',
-    name: 'Welcome Email',
-    subject: 'Welcome to the Community!',
-    body: `Hi there,\n\nWelcome to the Community! We are absolutely thrilled to have you join our platform.\n\nAs a member, you get access to all our premier features, community channels, and exclusive updates.\n\nIf you have any questions, feel free to reply to this email anytime!\n\nBest regards,\nJane Cooper`,
-    categoryId: 1,
-  },
-  {
-    id: 't-2',
-    name: 'Invoice Reminder',
-    subject: 'Reminder: Your Upcoming Invoice',
-    body: `Hi there,\n\nThis is a friendly reminder that your upcoming subscription invoice is due in 3 days. Please ensure your payment method is up-to-date in your billing dashboard.\n\nThank you for being a valued member!\n\nBest regards,\nJane Cooper`,
-    categoryId: 2,
-  },
-  {
-    id: 't-3',
-    name: 'System Update',
-    subject: 'Important System Maintenance Notice',
-    body: `Hi there,\n\nOur system will undergo scheduled maintenance this Sunday from 2:00 AM to 4:00 AM UTC. During this brief window, some dashboard features may be temporarily unavailable.\n\nWe appreciate your patience as we make these upgrades!\n\nBest regards,\nJane Cooper`,
-    categoryId: 3,
-  },
-];
-
 export default function SendEmailPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('0');
-  const [allTemplates] = useState<Template[]>(TEMPLATES);
-  const [filteredTemplates, setFilteredTemplates] = useState<Template[]>(TEMPLATES);
+  const [categories, setCategories] = useState(CATEGORIES);
+  const [allTemplates, setAllTemplates] = useState<Template[]>([]);
+  const [filteredTemplates, setFilteredTemplates] = useState<Template[]>([]);
 
   const [emailTo, setEmailTo] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
@@ -81,39 +59,75 @@ export default function SendEmailPage() {
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
 
   useEffect(() => {
-    const catId = Number(selectedCategoryId);
-    if (catId === 0) {
+    async function loadTemplates() {
+      try {
+        const response = await fetch('/api/templates');
+        if (!response.ok) throw new Error('Failed to load email templates');
+        const data = await response.json();
+        const emailCategories = (data.categories || []).filter((category: any) => category.channel === 'email');
+        setCategories([
+          { id: 0, name: 'All Categories' },
+          ...emailCategories.map((category: any) => ({ id: category.id, name: category.name })),
+        ]);
+        setAllTemplates((data.templates || []).filter((template: any) =>
+          emailCategories.some((category: any) => category.id === template.categoryId)
+        ));
+      } catch (error) {
+        console.error('Failed to load email templates:', error);
+        toast.error('Failed to load email templates');
+      }
+    }
+
+    loadTemplates();
+  }, []);
+
+  useEffect(() => {
+    if (selectedCategoryId === '0') {
       setFilteredTemplates(allTemplates);
     } else {
-      setFilteredTemplates(allTemplates.filter((t) => t.categoryId === catId));
+      setFilteredTemplates(allTemplates.filter((t) => String(t.categoryId) === selectedCategoryId));
     }
   }, [selectedCategoryId, allTemplates]);
 
   const selectTemplate = (template: Template) => {
     setEmailSubject(template.subject);
-    setEmailBody(template.body);
+    setEmailBody(template.body || template.content || '');
     setActiveTemplateId(template.id);
     toast.success('Template loaded');
   };
 
-  const saveDraft = () => {
+  const saveDraft = async () => {
+    await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: emailTo, subject: emailSubject, body: emailBody, status: 'DRAFT' }),
+    });
     toast.success('Draft saved successfully.');
   };
 
-  const sendEmail = () => {
+  const sendEmail = async () => {
     if (!emailTo.trim() || !emailSubject.trim() || !emailBody.trim()) {
       toast.error('All fields (To, Subject, and Body) are required.');
       return;
     }
     setIsSending(true);
-    setTimeout(() => {
+    try {
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: emailTo, subject: emailSubject, body: emailBody, status: 'QUEUED' }),
+      });
       toast.success('Email sent successfully!');
       setEmailTo('');
       setEmailSubject('');
       setEmailBody('');
       setActiveTemplateId(null);
+    } catch (error) {
+      console.error('Failed to send email:', error);
+      toast.error('Failed to send email');
+    } finally {
       setIsSending(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -170,7 +184,7 @@ export default function SendEmailPage() {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-slate-200 z-50">
-                  {CATEGORIES.map((cat) => (
+                  {categories.map((cat) => (
                     <SelectItem key={cat.id} value={String(cat.id)}>
                       {cat.name}
                     </SelectItem>
@@ -187,7 +201,7 @@ export default function SendEmailPage() {
               ) : (
                 filteredTemplates.map((template) => {
                   const isActive = activeTemplateId === template.id;
-                  const categoryName = CATEGORIES.find((c) => c.id === template.categoryId)?.name ?? '';
+                  const categoryName = categories.find((c) => String(c.id) === String(template.categoryId))?.name ?? '';
                   return (
                     <button
                       key={template.id}

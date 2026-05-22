@@ -100,19 +100,14 @@ export function StampTab({ stamps, setStamps }: StampTabProps) {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg h-10 flex items-center justify-center">
-              {stamps.length} Stamps
-            </span>
-            <UIButton
-              data-testid="add-stamp-btn"
-              onClick={() => setOpen(true)}
-              className="h-10 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Stamp
-            </UIButton>
-          </div>
+          <UIButton
+            data-testid="add-stamp-btn"
+            onClick={() => setOpen(true)}
+            className="h-10 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shrink-0 ml-auto"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Stamp
+          </UIButton>
         </div>
 
         <div className="overflow-x-auto">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Building2, Mail, Phone, Globe, FileText, Pencil, Check, X, UserPen } from 'lucide-react';
+import { Building2, Mail, Phone, Globe, FileText, Pencil, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -109,9 +109,13 @@ export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
         <div className="flex items-center gap-4">
           <div
             onClick={() => {
-              fileInputRef.current?.click();
+              if (editing) {
+                fileInputRef.current?.click();
+              }
             }}
-            className="h-14 w-14 rounded-xl bg-slate-900 text-white flex items-center justify-center font-display text-lg font-semibold overflow-hidden shrink-0 border border-slate-200 relative cursor-pointer hover:bg-slate-800 transition-colors group"
+            className={`h-14 w-14 rounded-xl bg-slate-900 text-white flex items-center justify-center font-display text-lg font-semibold overflow-hidden shrink-0 border border-slate-200 relative transition-colors group ${
+              editing ? 'cursor-pointer hover:bg-slate-800' : ''
+            }`}
           >
             {isImage(editing ? form.photo : details.photo) ? (
               <>
@@ -120,16 +124,16 @@ export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
                   alt={companyName}
                   className="h-full w-full object-cover"
                 />
-                <div
-                  className={`absolute inset-0 bg-black/40 flex items-center justify-center text-white transition-opacity duration-200 ${
-                    editing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                  }`}
-                >
-                  <UserPen className="h-6 w-6" />
-                </div>
+                {editing && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
+                    <Pencil className="h-5 w-5" strokeWidth={2} />
+                  </div>
+                )}
               </>
             ) : (
-              <UserPen className="h-6 w-6" />
+              <span className="text-white text-lg font-bold select-none">
+                {companyName ? companyName.charAt(0).toUpperCase() : '?'}
+              </span>
             )}
           </div>
           <div>
@@ -258,4 +262,3 @@ export function CompanyTab({ companyName, details, onSave }: CompanyTabProps) {
     </div>
   );
 }
-

@@ -51,6 +51,11 @@ interface Member {
   expiryDate: string;
   daysLeft: string;
   company?: string;
+  verified?: boolean;
+  joinIp?: string;
+  totalPosts?: number;
+  lastLogin?: string;
+  registrationDate?: string;
 }
 
 interface StatTileProps {
@@ -59,6 +64,36 @@ interface StatTileProps {
   value: string | number;
   accent?: string;
 }
+
+const normalizeContact = (contact: any, index: number) => {
+  const fullName = contact.name || [contact.firstName, contact.lastName].filter(Boolean).join(' ');
+  const [firstName = '', ...restName] = fullName.split(' ').filter(Boolean);
+  const lastName = contact.lastName || restName.join(' ');
+
+  return {
+    id: contact.id || `contact-${index + 1}`,
+    firstName: contact.firstName || firstName,
+    lastName,
+    designation: contact.designation || 'owner',
+    mobile: contact.mobile || contact.phone || contact.mobileNumber || '',
+    email: contact.email || '',
+    status: contact.status || 'active',
+    photo: contact.photo || `${(contact.firstName || firstName || '')[0] || ''}${(lastName || '')[0] || ''}`.toUpperCase(),
+    isMain: contact.isMain ?? index === 0,
+  };
+};
+
+const normalizeAddress = (address: any, index: number) => ({
+  id: address.id || `address-${index + 1}`,
+  title: address.title === 'Company Address' ? 'company' : address.title || 'work',
+  line1: address.line1 || address.addressLine1 || '',
+  line2: address.line2 || address.addressLine2 || '',
+  city: address.city || '',
+  state: address.state || '',
+  country: address.country || 'in',
+  pinCode: address.pinCode || address.pincode || '',
+  isDefault: address.isDefault ?? index === 0,
+});
 
 function StatTile({ icon: Icon, label, value, accent = 'bg-slate-50 text-slate-700 border border-slate-200' }: StatTileProps) {
   return (
@@ -104,8 +139,8 @@ export function MemberDetail({ defaultTab = 'company' }: { defaultTab?: string }
         
         setCompanyName(data.companyName || '');
         setCompanyDetails(data.companyDetails || {});
-        setContacts(data.contacts || []);
-        setAddresses(data.addresses || []);
+        setContacts((data.contacts || []).map(normalizeContact));
+        setAddresses((data.addresses || []).map(normalizeAddress));
         setPlan(data.plan || {});
         setStatus(data.status || 'ACTIVE');
         setExpiry(data.expiry || '');
@@ -127,7 +162,12 @@ export function MemberDetail({ defaultTab = 'company' }: { defaultTab?: string }
           payment: data.payment || 'PAID',
           expiryDate: data.expiry || '',
           daysLeft: '30',
-          company: data.companyName || 'Company Inc'
+          company: data.companyName || 'Company Inc',
+          verified: data.verified ?? true,
+          joinIp: data.joinIp || data.loginLogs?.[0]?.ip,
+          totalPosts: data.totalPosts ?? 0,
+          lastLogin: data.lastLogin || data.loginLogs?.[0]?.at,
+          registrationDate: data.registrationDate,
         }]);
       } catch (error) {
         console.error('Error fetching member details:', error);
@@ -154,6 +194,65 @@ export function MemberDetail({ defaultTab = 'company' }: { defaultTab?: string }
     const { companyName: newName, ...rest } = form;
     setCompanyName(newName);
     setCompanyDetails(rest);
+    fetch(`/api/members/${memberId}/company`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyName: newName, companyDetails: rest }),
+    }).catch((error) => console.error('Failed to save company details:', error));
+  };
+
+  const handleContactsChange = (nextContacts: any[]) => {
+    setContacts(nextContacts);
+    fetch(`/api/members/${memberId}/contacts`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contacts: nextContacts }),
+    }).catch((error) => console.error('Failed to save contacts:', error));
+  };
+
+  const handleAddressesChange = (nextAddresses: any[]) => {
+    setAddresses(nextAddresses);
+    fetch(`/api/members/${memberId}/addresses`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ addresses: nextAddresses }),
+    }).catch((error) => console.error('Failed to save addresses:', error));
+  };
+
+  const handleBroadcastsChange = (updater: any) => {
+    setBroadcasts((previous) => {
+      const nextBroadcasts = typeof updater === 'function' ? updater(previous) : updater;
+      fetch(`/api/members/${memberId}/broadcasts`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ broadcasts: nextBroadcasts }),
+      }).catch((error) => console.error('Failed to save member broadcasts:', error));
+      return nextBroadcasts;
+    });
+  };
+
+  const handleEmailsChange = (updater: any) => {
+    setEmails((previous) => {
+      const nextEmails = typeof updater === 'function' ? updater(previous) : updater;
+      fetch(`/api/members/${memberId}/emails`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emails: nextEmails }),
+      }).catch((error) => console.error('Failed to save emails:', error));
+      return nextEmails;
+    });
+  };
+
+  const handleStampsChange = (updater: any) => {
+    setStamps((previous) => {
+      const nextStamps = typeof updater === 'function' ? updater(previous) : updater;
+      fetch(`/api/members/${memberId}/stamps`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stamps: nextStamps }),
+      }).catch((error) => console.error('Failed to save stamps:', error));
+      return nextStamps;
+    });
   };
 
   const city = addresses?.[0]?.city || '—';
@@ -180,46 +279,59 @@ export function MemberDetail({ defaultTab = 'company' }: { defaultTab?: string }
             </div>
             <div className="min-w-0">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 mb-1">
-                Member · {seed.id}
+                Member · {seed.name.toUpperCase()}
               </div>
               <div className="flex items-center gap-1.5">
                 <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-tight text-slate-900 truncate">
                   {seed.name}
                 </h1>
-                <BadgeCheck
-                  data-testid="verified-tick"
-                  className="h-6 w-6 shrink-0"
-                  strokeWidth={1.5}
-                  style={{ color: 'white', fill: '#3b82f6' }}
-                />
+                {seed.verified !== false && (
+                  <BadgeCheck
+                    data-testid="verified-tick"
+                    className="h-6 w-6 shrink-0"
+                    strokeWidth={1.5}
+                    style={{ color: 'white', fill: '#3b82f6' }}
+                  />
+                )}
               </div>
               <div className="text-sm text-slate-500 mt-0.5">{companyName}</div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <StatTile icon={MapPin} label="City" value={city} />
             <StatTile
               icon={Wallet}
               label="Plan Name"
-              value={`${plan.name} · $${plan.price}`}
-              accent="bg-slate-900 text-white border border-slate-900"
+              value={`${plan.name} - $${plan.price}`}
             />
+            <StatTile icon={CalendarIcon} label="Plan Expiry" value={expiry || formatDate(seed.expiryDate)} />
             <StatTile
-              icon={status === 'active' ? CheckCircle2 : PauseCircle}
+              icon={status === 'active' || status === 'ACTIVE' ? CheckCircle2 : PauseCircle}
               label="Status"
-              value={status === 'active' ? 'Active' : 'Suspended'}
+              value={status === 'active' || status === 'ACTIVE' ? 'Active' : 'Suspended'}
               accent={
-                status === 'active'
+                status === 'active' || status === 'ACTIVE'
                   ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
                   : 'bg-red-50 text-red-600 border border-red-200'
               }
             />
-            <StatTile icon={MapPin} label="City" value={city} />
-            <StatTile icon={CalendarIcon} label="Join Date" value={formatDate(new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString())} />
-            <StatTile icon={Globe} label="Join IP" value="192.168.1.100" />
-            <StatTile icon={Hash} label="Total Posts" value="1,420" />
-            <StatTile icon={Clock} label="Last Login" value={relativeTime(new Date(Date.now() - 3 * 3600 * 1000).toISOString())} />
-            <StatTile icon={CalendarIcon} label="Plan Expiry" value={formatDate(expiry)} />
+            <StatTile icon={Globe} label="Join IP" value={seed.joinIp || '—'} />
+            <StatTile
+              icon={CalendarIcon}
+              label="Join Date"
+              value={seed.registrationDate || formatDate(new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString())}
+            />
+            <StatTile
+              icon={Hash}
+              label="Total Posts"
+              value={(seed.totalPosts ?? 0).toLocaleString()}
+            />
+            <StatTile
+              icon={Clock}
+              label="Last Login"
+              value={seed.lastLogin ? relativeTime(seed.lastLogin) : '—'}
+            />
           </div>
         </header>
 
@@ -263,7 +375,7 @@ export function MemberDetail({ defaultTab = 'company' }: { defaultTab?: string }
               className="h-9 px-4 data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 rounded-md transition-all flex items-center cursor-pointer"
             >
               <Mail className="h-3.5 w-3.5 mr-2" />
-              Email Log
+              Email
             </TabsTrigger>
             <TabsTrigger
               value="broadcast"
@@ -308,11 +420,11 @@ export function MemberDetail({ defaultTab = 'company' }: { defaultTab?: string }
           </TabsContent>
 
           <TabsContent value="contact" className="mt-0 focus-visible:outline-none">
-            <ContactTab contacts={contacts} onChange={setContacts} />
+            <ContactTab contacts={contacts} onChange={handleContactsChange} />
           </TabsContent>
 
           <TabsContent value="address" className="mt-0 focus-visible:outline-none">
-            <AddressTab addresses={addresses} onChange={setAddresses} />
+            <AddressTab addresses={addresses} onChange={handleAddressesChange} />
           </TabsContent>
 
           <TabsContent value="assign-plan" className="mt-0 focus-visible:outline-none">
@@ -332,11 +444,11 @@ export function MemberDetail({ defaultTab = 'company' }: { defaultTab?: string }
           </TabsContent>
 
           <TabsContent value="email" className="mt-0 focus-visible:outline-none">
-            <EmailTab member={seed} emails={emails} setEmails={setEmails} />
+            <EmailTab member={seed} emails={emails} setEmails={handleEmailsChange} />
           </TabsContent>
 
           <TabsContent value="broadcast" className="mt-0 focus-visible:outline-none">
-            <BroadcastTab member={seed} broadcasts={broadcasts} setBroadcasts={setBroadcasts} />
+            <BroadcastTab member={seed} broadcasts={broadcasts} setBroadcasts={handleBroadcastsChange} />
           </TabsContent>
 
           <TabsContent value="broadcast-settings" className="mt-0 focus-visible:outline-none">
@@ -348,7 +460,7 @@ export function MemberDetail({ defaultTab = 'company' }: { defaultTab?: string }
           </TabsContent>
 
           <TabsContent value="stamp" className="mt-0 focus-visible:outline-none">
-            <StampTab stamps={stamps} setStamps={setStamps} />
+            <StampTab stamps={stamps} setStamps={handleStampsChange} />
           </TabsContent>
         </Tabs>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   FileCode,
   Plus,
@@ -56,62 +56,8 @@ interface TemplateItem {
 }
 
 export default function TemplatesPage() {
-  const [categories, setCategories] = useState<TemplateCategory[]>([
-    { id: '1', name: 'Welcome Series', channel: 'email', status: 'active' },
-    { id: '2', name: 'Billing Receipts', channel: 'email', status: 'active' },
-    { id: '3', name: 'Account Security Alerts', channel: 'push', status: 'active' },
-    { id: '4', name: 'Promo Broadcasts', channel: 'email', status: 'inactive' },
-    { id: '5', name: 'System Maintenance Notices', channel: 'push', status: 'active' },
-  ]);
-
-  const [templates, setTemplates] = useState<TemplateItem[]>([
-    {
-      id: '1',
-      categoryId: '1',
-      name: 'New Signup Confirmation',
-      subject: 'Welcome to Northgate, {name}!',
-      type: 'Transactional',
-      content: 'Hello {name},\n\nThank you for signing up at {company}! Your registration is successfully confirmed under the {plan} plan.'
-    },
-    {
-      id: '2',
-      categoryId: '1',
-      name: 'Onboarding Checklist Guide',
-      subject: 'Quick onboarding guide to set up your account',
-      type: 'Marketing',
-      content: 'Hey {name},\n\nTo help you get the most out of your {plan} plan, we have prepared a quick start dashboard checklist.'
-    },
-    {
-      id: '3',
-      categoryId: '2',
-      name: 'Invoice Payment Receipt',
-      subject: 'Receipt for your invoice #{invoiceNum}',
-      type: 'Transactional',
-      content: 'Dear Partner,\n\nWe have received your payment. A confirmation statement has been sent to your account.'
-    },
-    {
-      id: '4',
-      categoryId: '2',
-      name: 'Subscription Renewal Alert',
-      subject: 'Your plan {plan} will renew soon',
-      type: 'Transactional',
-      content: 'Hello {name},\n\nThis is a friendly reminder that your subscription will auto-renew on {expiry}.'
-    },
-    {
-      id: '5',
-      categoryId: '3',
-      name: 'Failed Login Alert Notification',
-      type: 'Transactional',
-      content: 'Alert: Unrecognized login attempt detected on your corporate account.'
-    },
-    {
-      id: '6',
-      categoryId: '3',
-      name: 'Security Settings Updated',
-      type: 'Transactional',
-      content: 'Your master account credentials have been changed successfully.'
-    }
-  ]);
+  const [categories, setCategories] = useState<TemplateCategory[]>([]);
+  const [templates, setTemplates] = useState<TemplateItem[]>([]);
 
   const [channelFilter, setChannelFilter] = useState<'email' | 'push'>('email');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('1');
@@ -131,6 +77,33 @@ export default function TemplatesPage() {
   const [tempFormSubject, setTempFormSubject] = useState('');
   const [tempFormType, setTempFormType] = useState<'Transactional' | 'Marketing'>('Transactional');
   const [tempFormContent, setTempFormContent] = useState('');
+
+  useEffect(() => {
+    async function loadTemplates() {
+      try {
+        const response = await fetch('/api/templates');
+        if (!response.ok) throw new Error('Failed to load templates');
+        const data = await response.json();
+        setCategories(data.categories || []);
+        setTemplates(data.templates || []);
+        const firstEmail = data.categories?.find((category: TemplateCategory) => category.channel === 'email');
+        if (firstEmail) setSelectedCategoryId(firstEmail.id);
+      } catch (error) {
+        console.error('Failed to load templates:', error);
+        toast.error('Failed to load template settings');
+      }
+    }
+
+    loadTemplates();
+  }, []);
+
+  const saveTemplateState = (nextCategories: TemplateCategory[], nextTemplates: TemplateItem[]) => {
+    fetch('/api/templates', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categories: nextCategories, templates: nextTemplates }),
+    }).catch((error) => console.error('Failed to save template settings:', error));
+  };
 
   const filteredCategories = useMemo(() => {
     return categories.filter(c => c.channel === channelFilter);
@@ -183,7 +156,9 @@ export default function TemplatesPage() {
     }
 
     if (editingCategory) {
-      setCategories(prev => prev.map(c => c.id === editingCategory.id ? { ...c, name: catFormName, status: catFormStatus as 'active' | 'inactive' } : c));
+      const nextCategories = categories.map(c => c.id === editingCategory.id ? { ...c, name: catFormName, status: catFormStatus as 'active' | 'inactive' } : c);
+      setCategories(nextCategories);
+      saveTemplateState(nextCategories, templates);
       toast.success('Category updated successfully!');
     } else {
       const newCat: TemplateCategory = {
@@ -192,7 +167,9 @@ export default function TemplatesPage() {
         channel: channelFilter,
         status: catFormStatus as 'active' | 'inactive'
       };
-      setCategories(prev => [...prev, newCat]);
+      const nextCategories = [...categories, newCat];
+      setCategories(nextCategories);
+      saveTemplateState(nextCategories, templates);
       setSelectedCategoryId(newCat.id);
       toast.success('New communication category created!');
     }
@@ -203,8 +180,11 @@ export default function TemplatesPage() {
     e.stopPropagation();
     if (!confirm('Are you sure you want to delete this category? All its templates will be lost.')) return;
 
-    setCategories(prev => prev.filter(c => c.id !== id));
-    setTemplates(prev => prev.filter(t => t.categoryId !== id));
+    const nextCategories = categories.filter(c => c.id !== id);
+    const nextTemplates = templates.filter(t => t.categoryId !== id);
+    setCategories(nextCategories);
+    setTemplates(nextTemplates);
+    saveTemplateState(nextCategories, nextTemplates);
 
     if (selectedCategoryId === id) {
       const remaining = categories.filter(c => c.channel === channelFilter && c.id !== id);
@@ -246,14 +226,16 @@ export default function TemplatesPage() {
     }
 
     if (editingTemplate) {
-      setTemplates(prev => prev.map(t => t.id === editingTemplate.id ? {
+      const nextTemplates = templates.map(t => t.id === editingTemplate.id ? {
         ...t,
         name: tempFormName,
         categoryId: tempFormCategoryId,
         subject: channelFilter === 'email' ? tempFormSubject : undefined,
         type: tempFormType,
         content: tempFormContent
-      } : t));
+      } : t);
+      setTemplates(nextTemplates);
+      saveTemplateState(categories, nextTemplates);
       toast.success('Template updated successfully!');
     } else {
       const newTemp: TemplateItem = {
@@ -264,7 +246,9 @@ export default function TemplatesPage() {
         type: tempFormType,
         content: tempFormContent
       };
-      setTemplates(prev => [...prev, newTemp]);
+      const nextTemplates = [...templates, newTemp];
+      setTemplates(nextTemplates);
+      saveTemplateState(categories, nextTemplates);
       toast.success('New template draft saved successfully!');
     }
     setTemplateModalOpen(false);
@@ -272,7 +256,9 @@ export default function TemplatesPage() {
 
   const handleDeleteTemplate = (id: string) => {
     if (!confirm('Are you sure you want to delete this template?')) return;
-    setTemplates(prev => prev.filter(t => t.id !== id));
+    const nextTemplates = templates.filter(t => t.id !== id);
+    setTemplates(nextTemplates);
+    saveTemplateState(categories, nextTemplates);
     toast.success('Template deleted successfully.');
   };
 
