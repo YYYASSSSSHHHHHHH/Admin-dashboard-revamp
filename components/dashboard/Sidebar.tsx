@@ -84,19 +84,20 @@ export function Sidebar() {
   };
 
   const getHeaderClass = (section: string) => {
-    const isActive = isSectionActive(section);
-    return `w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all duration-200 cursor-pointer ${isActive
-      ? 'bg-slate-900 text-white font-semibold shadow-sm'
-      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-medium'
-      }`;
+    return `w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all duration-200 cursor-pointer text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium`;
   };
 
   const getSubLinkClass = (href: string) => {
     const isActive = activeRoute === href;
-    return `flex items-center gap-3 py-2 px-3 rounded-lg text-sm transition-all duration-200 cursor-pointer ${isActive
-      ? 'bg-slate-900/5 text-slate-950 font-semibold border-l-2 border-slate-900 rounded-l-none pl-2.5'
-      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+    return `flex items-center gap-2 py-2 pl-2 pr-3 rounded-lg text-sm transition-all duration-200 cursor-pointer ${isActive
+      ? 'bg-slate-100 text-slate-950 font-semibold'
+      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium'
       }`;
+  };
+
+  const getDotClass = (href: string) => {
+    const isActive = activeRoute === href;
+    return `h-1.5 w-1.5 rounded-full shrink-0 ${isActive ? 'bg-slate-900' : 'bg-slate-300'}`;
   };
 
   return (
@@ -152,18 +153,18 @@ export function Sidebar() {
             className={getHeaderClass('billing')}
           >
             <div className="flex items-center gap-3">
-              <CreditCard className={`h-4 w-4 shrink-0 ${isSectionActive('billing') ? 'text-white' : 'text-slate-500'}`} />
-              <span>Members & Billing</span>
+              <CreditCard className="h-4 w-4 shrink-0 text-slate-500" />
+              <span>Plans</span>
             </div>
             {openSections.billing ? (
-              <ChevronDown className={`h-4 w-4 ${isSectionActive('billing') ? 'text-white' : 'text-slate-500'}`} />
+              <ChevronDown className="h-4 w-4 text-slate-500" />
             ) : (
-              <ChevronRight className={`h-4 w-4 ${isSectionActive('billing') ? 'text-white' : 'text-slate-500'}`} />
+              <ChevronRight className="h-4 w-4 text-slate-500" />
             )}
           </button>
 
           <div
-            className={`pl-4 ml-5 border-l border-slate-100 space-y-1 overflow-hidden transition-all duration-350 ease-in-out ${openSections.billing ? 'max-h-48 py-1.5 opacity-100' : 'max-h-0 py-0 opacity-0 pointer-events-none'
+            className={`pl-1 space-y-0.5 overflow-hidden transition-all duration-350 ease-in-out ${openSections.billing ? 'max-h-48 py-1 opacity-100' : 'max-h-0 py-0 opacity-0 pointer-events-none'
               }`}
           >
             <Link
@@ -172,8 +173,9 @@ export function Sidebar() {
               className={getSubLinkClass('/plans')}
               data-testid="sub-membership-plans"
             >
+              <span className={getDotClass('/plans')}></span>
               <Package className="h-4 w-4 shrink-0 text-slate-500" />
-              <span>Membership Plans</span>
+              <span>Plans</span>
             </Link>
             <Link
               href="/membership-label"
@@ -181,8 +183,9 @@ export function Sidebar() {
               className={getSubLinkClass('/membership-label')}
               data-testid="sub-membership-label"
             >
+              <span className={getDotClass('/membership-label')}></span>
               <Tag className="h-4 w-4 shrink-0 text-slate-500" />
-              <span>App Membership Label</span>
+              <span>App Label</span>
             </Link>
             <Link
               href="/invoices"
@@ -190,8 +193,9 @@ export function Sidebar() {
               className={getSubLinkClass('/invoices')}
               data-testid="sub-invoices"
             >
+              <span className={getDotClass('/invoices')}></span>
               <FileText className="h-4 w-4 shrink-0 text-slate-500" />
-              <span>Invoice</span>
+              <span>Invoices</span>
             </Link>
           </div>
         </div>
@@ -202,18 +206,18 @@ export function Sidebar() {
             className={getHeaderClass('communication')}
           >
             <div className="flex items-center gap-3">
-              <MessageSquare className={`h-4 w-4 shrink-0 ${isSectionActive('communication') ? 'text-white' : 'text-slate-500'}`} />
+              <MessageSquare className="h-4 w-4 shrink-0 text-slate-500" />
               <span>Communication</span>
             </div>
             {openSections.communication ? (
-              <ChevronDown className={`h-4 w-4 ${isSectionActive('communication') ? 'text-white' : 'text-slate-500'}`} />
+              <ChevronDown className="h-4 w-4 text-slate-500" />
             ) : (
-              <ChevronRight className={`h-4 w-4 ${isSectionActive('communication') ? 'text-white' : 'text-slate-500'}`} />
+              <ChevronRight className="h-4 w-4 text-slate-500" />
             )}
           </button>
 
           <div
-            className={`pl-4 ml-5 border-l border-slate-100 space-y-1 overflow-hidden transition-all duration-350 ease-in-out ${openSections.communication ? 'max-h-40 py-1.5 opacity-100' : 'max-h-0 py-0 opacity-0 pointer-events-none'
+            className={`pl-1 space-y-0.5 overflow-hidden transition-all duration-350 ease-in-out ${openSections.communication ? 'max-h-40 py-1 opacity-100' : 'max-h-0 py-0 opacity-0 pointer-events-none'
               }`}
           >
             <Link
@@ -222,8 +226,9 @@ export function Sidebar() {
               className={getSubLinkClass('/send-email')}
               data-testid="sub-send-email"
             >
+              <span className={getDotClass('/send-email')}></span>
               <Send className="h-4 w-4 shrink-0 text-slate-500" />
-              <span>Send Email Notification</span>
+              <span>Email</span>
             </Link>
             <Link
               href="/broadcast-history"
@@ -231,8 +236,9 @@ export function Sidebar() {
               className={getSubLinkClass('/broadcast-history')}
               data-testid="sub-broadcast-history"
             >
+              <span className={getDotClass('/broadcast-history')}></span>
               <Radio className="h-4 w-4 shrink-0 text-slate-500" />
-              <span>Broadcast History</span>
+              <span>Broadcast</span>
             </Link>
           </div>
         </div>
@@ -243,18 +249,18 @@ export function Sidebar() {
             className={getHeaderClass('request')}
           >
             <div className="flex items-center gap-3">
-              <ClipboardList className={`h-4 w-4 shrink-0 ${isSectionActive('request') ? 'text-white' : 'text-slate-500'}`} />
+              <ClipboardList className="h-4 w-4 shrink-0 text-slate-500" />
               <span>Request</span>
             </div>
             {openSections.request ? (
-              <ChevronDown className={`h-4 w-4 ${isSectionActive('request') ? 'text-white' : 'text-slate-500'}`} />
+              <ChevronDown className="h-4 w-4 text-slate-500" />
             ) : (
-              <ChevronRight className={`h-4 w-4 ${isSectionActive('request') ? 'text-white' : 'text-slate-500'}`} />
+              <ChevronRight className="h-4 w-4 text-slate-500" />
             )}
           </button>
 
           <div
-            className={`pl-4 ml-5 border-l border-slate-100 space-y-1 overflow-hidden transition-all duration-350 ease-in-out ${openSections.request ? 'max-h-40 py-1.5 opacity-100' : 'max-h-0 py-0 opacity-0 pointer-events-none'
+            className={`pl-1 space-y-0.5 overflow-hidden transition-all duration-350 ease-in-out ${openSections.request ? 'max-h-40 py-1 opacity-100' : 'max-h-0 py-0 opacity-0 pointer-events-none'
               }`}
           >
             <Link
@@ -263,8 +269,9 @@ export function Sidebar() {
               className={getSubLinkClass('/call-request')}
               data-testid="sub-call-request"
             >
+              <span className={getDotClass('/call-request')}></span>
               <Phone className="h-4 w-4 shrink-0 text-slate-500" />
-              <span>Call Request</span>
+              <span>Call</span>
             </Link>
             <Link
               href="/contact-request"
@@ -272,8 +279,9 @@ export function Sidebar() {
               className={getSubLinkClass('/contact-request')}
               data-testid="sub-contact-request"
             >
+              <span className={getDotClass('/contact-request')}></span>
               <Contact className="h-4 w-4 shrink-0 text-slate-500" />
-              <span>Contact Request</span>
+              <span>Contact</span>
             </Link>
           </div>
         </div>
@@ -288,18 +296,18 @@ export function Sidebar() {
             className={getHeaderClass('settings')}
           >
             <div className="flex items-center gap-3">
-              <SettingsIcon className={`h-4 w-4 shrink-0 ${isSectionActive('settings') ? 'text-white' : 'text-slate-500'}`} />
+              <SettingsIcon className="h-4 w-4 shrink-0 text-slate-500" />
               <span>Settings</span>
             </div>
             {openSections.settings ? (
-              <ChevronDown className={`h-4 w-4 ${isSectionActive('settings') ? 'text-white' : 'text-slate-500'}`} />
+              <ChevronDown className="h-4 w-4 text-slate-500" />
             ) : (
-              <ChevronRight className={`h-4 w-4 ${isSectionActive('settings') ? 'text-white' : 'text-slate-500'}`} />
+              <ChevronRight className="h-4 w-4 text-slate-500" />
             )}
           </button>
 
           <div
-            className={`pl-4 ml-5 border-l border-slate-100 space-y-1 overflow-hidden transition-all duration-350 ease-in-out ${openSections.settings ? 'max-h-36 py-1.5 opacity-100' : 'max-h-0 py-0 opacity-0 pointer-events-none'
+            className={`pl-1 space-y-0.5 overflow-hidden transition-all duration-350 ease-in-out ${openSections.settings ? 'max-h-36 py-1 opacity-100' : 'max-h-0 py-0 opacity-0 pointer-events-none'
               }`}
           >
             <Link
@@ -308,6 +316,7 @@ export function Sidebar() {
               className={getSubLinkClass('/field-setting')}
               data-testid="sub-field-setting"
             >
+              <span className={getDotClass('/field-setting')}></span>
               <Sliders className="h-4 w-4 shrink-0 text-slate-500" />
               <span>Master Setup</span>
             </Link>
@@ -317,6 +326,7 @@ export function Sidebar() {
               className={getSubLinkClass('/templates')}
               data-testid="sub-templates"
             >
+              <span className={getDotClass('/templates')}></span>
               <FileCode className="h-4 w-4 shrink-0 text-slate-500" />
               <span>Templates</span>
             </Link>
