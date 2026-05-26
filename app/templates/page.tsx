@@ -9,25 +9,25 @@ import {
   Mail,
   Bell,
   FolderPlus,
-  Bold,
-  Italic,
-  Underline,
-  Strikethrough,
-  List,
-  ListOrdered,
-  Link2,
-  Tag,
-  Info,
+  Variable,
   Sliders,
-  Image as ImageIcon
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Header } from '@/components/dashboard/Header';
 import { SearchBar } from '@/components/dashboard/SearchBar';
+import { RichTextEditor } from '@/components/dashboard/RichTextEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -36,7 +36,9 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { StatusBadge } from '@/components/dashboard/StatusBadge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { EMAIL_VARIABLES } from '@/lib/dashboard-mock-data';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface TemplateCategory {
@@ -55,12 +57,37 @@ interface TemplateItem {
   content: string;
 }
 
+const TEMPLATE_DIALOG_SHELL =
+  'sm:max-w-3xl w-[calc(100%-2rem)] max-h-[min(720px,calc(100vh-2rem))] flex flex-col gap-0 p-0 overflow-hidden bg-white border border-slate-200 shadow-xl rounded-xl';
+
+const PLACEHOLDER_TOKENS = [
+  { token: '{name}', label: 'Name' },
+  { token: '{company}', label: 'Company' },
+  { token: '{plan}', label: 'Plan' },
+  { token: '{expiry}', label: 'Expiry' },
+  { token: '{invoiceNum}', label: 'Invoice #' },
+];
+
+const PUSH_CHAR_LIMIT = 240;
+
+function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+        {label}
+      </Label>
+      {children}
+      {hint && <p className="text-xs text-slate-500">{hint}</p>}
+    </div>
+  );
+}
+
 export default function TemplatesPage() {
   const [categories, setCategories] = useState<TemplateCategory[]>([]);
   const [templates, setTemplates] = useState<TemplateItem[]>([]);
 
   const [channelFilter, setChannelFilter] = useState<'email' | 'push'>('email');
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('1');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
 
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
@@ -77,6 +104,8 @@ export default function TemplatesPage() {
   const [tempFormSubject, setTempFormSubject] = useState('');
   const [tempFormType, setTempFormType] = useState<'Transactional' | 'Marketing'>('Transactional');
   const [tempFormContent, setTempFormContent] = useState('');
+  const [editorRef, setEditorRef] = useState<any>(null);
+  const [varOpen, setVarOpen] = useState(false);
 
   useEffect(() => {
     async function loadTemplates() {
@@ -86,14 +115,13 @@ export default function TemplatesPage() {
         const data = await response.json();
         setCategories(data.categories || []);
         setTemplates(data.templates || []);
-        const firstEmail = data.categories?.find((category: TemplateCategory) => category.channel === 'email');
+        const firstEmail = data.categories?.find((c: TemplateCategory) => c.channel === 'email');
         if (firstEmail) setSelectedCategoryId(firstEmail.id);
       } catch (error) {
         console.error('Failed to load templates:', error);
         toast.error('Failed to load template settings');
       }
     }
-
     loadTemplates();
   }, []);
 
@@ -105,280 +133,313 @@ export default function TemplatesPage() {
     }).catch((error) => console.error('Failed to save template settings:', error));
   };
 
-  const filteredCategories = useMemo(() => {
-    return categories.filter(c => c.channel === channelFilter);
-  }, [categories, channelFilter]);
+  const filteredCategories = useMemo(
+    () => categories.filter((c) => c.channel === channelFilter),
+    [categories, channelFilter],
+  );
 
   const categoryTemplateCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    categories.forEach(cat => {
-      counts[cat.id] = templates.filter(t => t.categoryId === cat.id).length;
+    categories.forEach((cat) => {
+      counts[cat.id] = templates.filter((t) => t.categoryId === cat.id).length;
     });
     return counts;
   }, [categories, templates]);
 
   const filteredTemplates = useMemo(() => {
-    return templates.filter(t => {
+    return templates.filter((t) => {
       const matchesCategory = t.categoryId === selectedCategoryId;
-      const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            (t.subject && t.subject.toLowerCase().includes(searchTerm.toLowerCase()));
+      const q = searchTerm.toLowerCase();
+      const matchesSearch =
+        t.name.toLowerCase().includes(q) ||
+        (t.subject && t.subject.toLowerCase().includes(q)) ||
+        t.content.toLowerCase().includes(q);
       return matchesCategory && matchesSearch;
     });
   }, [templates, selectedCategoryId, searchTerm]);
 
   const handleChannelTabChange = (channel: 'email' | 'push') => {
     setChannelFilter(channel);
-    const firstCat = categories.find(c => c.channel === channel);
-    if (firstCat) {
-      setSelectedCategoryId(firstCat.id);
-    } else {
-      setSelectedCategoryId('');
-    }
+    const firstCat = categories.find((c) => c.channel === channel);
+    setSelectedCategoryId(firstCat?.id || '');
     setSearchTerm('');
   };
 
   const openCategoryModal = (cat?: TemplateCategory) => {
     setEditingCategory(cat || null);
-    if (cat) {
-      setCatFormName(cat.name);
-      setCatFormStatus(cat.status);
-    } else {
-      setCatFormName('');
-      setCatFormStatus('active');
-    }
+    setCatFormName(cat?.name || '');
+    setCatFormStatus(cat?.status || 'active');
     setCategoryModalOpen(true);
   };
 
   const handleSaveCategory = () => {
     if (!catFormName.trim()) {
-      toast.error('Category Name is required.');
+      toast.error('Category name is required.');
       return;
     }
 
     if (editingCategory) {
-      const nextCategories = categories.map(c => c.id === editingCategory.id ? { ...c, name: catFormName, status: catFormStatus as 'active' | 'inactive' } : c);
+      const nextCategories = categories.map((c) =>
+        c.id === editingCategory.id
+          ? { ...c, name: catFormName, status: catFormStatus as 'active' | 'inactive' }
+          : c,
+      );
       setCategories(nextCategories);
       saveTemplateState(nextCategories, templates);
-      toast.success('Category updated successfully!');
+      toast.success('Category updated');
     } else {
       const newCat: TemplateCategory = {
         id: String(Date.now()),
         name: catFormName,
         channel: channelFilter,
-        status: catFormStatus as 'active' | 'inactive'
+        status: catFormStatus as 'active' | 'inactive',
       };
       const nextCategories = [...categories, newCat];
       setCategories(nextCategories);
       saveTemplateState(nextCategories, templates);
       setSelectedCategoryId(newCat.id);
-      toast.success('New communication category created!');
+      toast.success('Category created');
     }
     setCategoryModalOpen(false);
   };
 
   const handleDeleteCategory = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('Are you sure you want to delete this category? All its templates will be lost.')) return;
+    if (!confirm('Delete this category and all its templates?')) return;
 
-    const nextCategories = categories.filter(c => c.id !== id);
-    const nextTemplates = templates.filter(t => t.categoryId !== id);
+    const nextCategories = categories.filter((c) => c.id !== id);
+    const nextTemplates = templates.filter((t) => t.categoryId !== id);
     setCategories(nextCategories);
     setTemplates(nextTemplates);
     saveTemplateState(nextCategories, nextTemplates);
 
     if (selectedCategoryId === id) {
-      const remaining = categories.filter(c => c.channel === channelFilter && c.id !== id);
-      if (remaining.length > 0) {
-        setSelectedCategoryId(remaining[0].id);
-      } else {
-        setSelectedCategoryId('');
-      }
+      const remaining = categories.filter((c) => c.channel === channelFilter && c.id !== id);
+      setSelectedCategoryId(remaining[0]?.id || '');
     }
-    toast.success('Category deleted successfully.');
+    toast.success('Category deleted');
   };
 
   const openTemplateModal = (temp?: TemplateItem) => {
     setEditingTemplate(temp || null);
-    if (temp) {
-      setTempFormName(temp.name);
-      setTempFormCategoryId(temp.categoryId);
-      setTempFormSubject(temp.subject || '');
-      setTempFormType(temp.type);
-      setTempFormContent(temp.content);
-    } else {
-      setTempFormName('');
-      setTempFormCategoryId(selectedCategoryId);
-      setTempFormSubject('');
-      setTempFormType('Transactional');
-      setTempFormContent('');
-    }
+    setTempFormName(temp?.name || '');
+    setTempFormCategoryId(temp?.categoryId || selectedCategoryId);
+    setTempFormSubject(temp?.subject || '');
+    setTempFormType(temp?.type || 'Transactional');
+    setTempFormContent(temp?.content || '');
     setTemplateModalOpen(true);
   };
 
   const handleSaveTemplate = () => {
     if (!tempFormName.trim()) {
-      toast.error('Template Name is required.');
+      toast.error('Template name is required.');
       return;
     }
     if (channelFilter === 'email' && !tempFormSubject.trim()) {
-      toast.error('Subject line is required for Email templates.');
+      toast.error('Subject is required for email templates.');
+      return;
+    }
+    if (!tempFormContent.trim()) {
+      toast.error('Template content is required.');
       return;
     }
 
     if (editingTemplate) {
-      const nextTemplates = templates.map(t => t.id === editingTemplate.id ? {
-        ...t,
-        name: tempFormName,
-        categoryId: tempFormCategoryId,
-        subject: channelFilter === 'email' ? tempFormSubject : undefined,
-        type: tempFormType,
-        content: tempFormContent
-      } : t);
+      const nextTemplates = templates.map((t) =>
+        t.id === editingTemplate.id
+          ? {
+              ...t,
+              name: tempFormName,
+              categoryId: tempFormCategoryId,
+              subject: channelFilter === 'email' ? tempFormSubject : tempFormSubject || tempFormName,
+              type: tempFormType,
+              content: tempFormContent,
+            }
+          : t,
+      );
       setTemplates(nextTemplates);
       saveTemplateState(categories, nextTemplates);
-      toast.success('Template updated successfully!');
+      toast.success('Template updated');
     } else {
       const newTemp: TemplateItem = {
         id: String(Date.now()),
         categoryId: tempFormCategoryId,
         name: tempFormName,
-        subject: channelFilter === 'email' ? tempFormSubject : undefined,
+        subject: channelFilter === 'email' ? tempFormSubject : tempFormSubject || tempFormName,
         type: tempFormType,
-        content: tempFormContent
+        content: tempFormContent,
       };
       const nextTemplates = [...templates, newTemp];
       setTemplates(nextTemplates);
       saveTemplateState(categories, nextTemplates);
-      toast.success('New template draft saved successfully!');
+      toast.success('Template created');
     }
     setTemplateModalOpen(false);
   };
 
   const handleDeleteTemplate = (id: string) => {
-    if (!confirm('Are you sure you want to delete this template?')) return;
-    const nextTemplates = templates.filter(t => t.id !== id);
+    if (!confirm('Delete this template?')) return;
+    const nextTemplates = templates.filter((t) => t.id !== id);
     setTemplates(nextTemplates);
     saveTemplateState(categories, nextTemplates);
-    toast.success('Template deleted successfully.');
+    toast.success('Template deleted');
   };
 
-  const insertPlaceholder = (tag: string) => {
-    setTempFormContent(prev => prev + ` ${tag}`);
-    toast.info(`Placeholder ${tag} added to content.`);
+  const insertPlaceholder = (token: string) => {
+    if (channelFilter === 'email' && editorRef) {
+      editorRef.chain().focus().insertContent(token).run();
+    } else {
+      setTempFormContent((prev) => {
+        const next = prev + token;
+        return channelFilter === 'push' ? next.slice(0, PUSH_CHAR_LIMIT) : next;
+      });
+    }
   };
 
-  const handleEditorFormat = (action: string) => {
-    toast.info(`Format triggered: ${action}`);
+  const insertVariable = (varId: string) => {
+    const token = `{{${varId}}}`;
+    insertPlaceholder(token);
+    setVarOpen(false);
   };
+
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+  const channelTemplates = templates.filter((t) => {
+    const cat = categories.find((c) => c.id === t.categoryId);
+    return cat?.channel === channelFilter;
+  });
 
   return (
     <DashboardLayout>
-      <div className="p-6 md:p-8 lg:p-10 flex flex-col space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 md:p-8 lg:p-10 flex flex-col gap-6" data-testid="templates-page">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <Header
-            title="Template Settings"
-            subtitle="Draft, edit, and categorize transactional notifications and automated communication layouts."
+            title="Templates"
+            subtitle="Manage email and push notification layouts used across Communication."
           />
           <Button
             onClick={() => openTemplateModal()}
             disabled={!selectedCategoryId}
-            className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-4 h-10 flex items-center gap-1.5 shadow-sm rounded-lg shrink-0 self-start md:self-auto cursor-pointer"
+            className="h-10 bg-slate-900 hover:bg-slate-800 text-white shrink-0"
           >
-            <Plus className="h-4 w-4" />
-            <span>Add New Template</span>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Template
           </Button>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-6 items-stretch">
-          <div
-            className="w-full lg:w-72 bg-white border shrink-0 flex flex-col gap-1.5 h-fit p-4 shadow-sm"
-            style={{ borderColor: '#E5E7EB', borderRadius: '12px' }}
-          >
-            <div className="px-1 mb-2">
-              <div className="flex items-center bg-slate-50/80 p-1 rounded-lg border border-slate-200/60">
+        <div className="flex flex-col lg:flex-row gap-5 items-start">
+          <aside className="w-full lg:w-72 shrink-0 bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-slate-100">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 mb-2">
+                Channel
+              </p>
+              <div className="flex items-center bg-slate-100/80 p-1 rounded-lg border border-slate-200/60">
                 <button
+                  type="button"
                   onClick={() => handleChannelTabChange('email')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                  className={cn(
+                    'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer',
                     channelFilter === 'email'
                       ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
+                      : 'text-slate-500 hover:text-slate-800',
+                  )}
                 >
-                  <Mail className="h-3.5 w-3.5 font-bold" />
-                  <span>Email</span>
+                  <Mail className="h-3.5 w-3.5" />
+                  Email
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleChannelTabChange('push')}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                  className={cn(
+                    'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer',
                     channelFilter === 'push'
                       ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
+                      : 'text-slate-500 hover:text-slate-800',
+                  )}
                 >
-                  <Bell className="h-3.5 w-3.5 font-bold" />
-                  <span>Push</span>
+                  <Bell className="h-3.5 w-3.5" />
+                  Push
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between px-3 py-1 border-b mb-1" style={{ borderColor: '#EEF2F6' }}>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.12em]">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                 Categories
               </span>
               <button
+                type="button"
                 onClick={() => openCategoryModal()}
-                className="text-[10px] text-blue-600 hover:underline flex items-center gap-0.5 font-bold cursor-pointer"
+                className="text-xs font-semibold text-slate-700 hover:text-slate-900 flex items-center gap-1 cursor-pointer"
               >
                 <FolderPlus className="h-3.5 w-3.5" />
-                <span>Add New</span>
+                Add
               </button>
             </div>
 
-            <div className="flex flex-col gap-1 overflow-y-auto max-h-[380px] pr-1">
+            <div className="p-2 flex flex-col gap-0.5 max-h-[420px] overflow-y-auto">
               {filteredCategories.length === 0 ? (
-                <div className="text-center py-6 text-xs text-slate-400 font-medium">
-                  No active categories.
-                </div>
+                <p className="text-center py-8 text-sm text-slate-500">No categories yet.</p>
               ) : (
                 filteredCategories.map((cat) => {
                   const isActive = selectedCategoryId === cat.id;
                   return (
                     <div
                       key={cat.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => {
                         setSelectedCategoryId(cat.id);
                         setSearchTerm('');
                       }}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-xs transition-all duration-150 cursor-pointer select-none group border ${
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedCategoryId(cat.id);
+                          setSearchTerm('');
+                        }
+                      }}
+                      className={cn(
+                        'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-sm transition-all cursor-pointer group border',
                         isActive
-                          ? 'bg-slate-100 border-slate-200/80 text-slate-950 font-bold shadow-xs'
-                          : 'bg-white border-transparent text-slate-655 hover:bg-slate-50 hover:text-slate-900 font-semibold'
-                      }`}
+                          ? 'bg-slate-100 border-slate-200 text-slate-950 font-semibold'
+                          : 'bg-white border-transparent text-slate-600 hover:bg-slate-50 font-medium',
+                      )}
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                          cat.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'
-                        }`} />
+                        <span
+                          className={cn(
+                            'w-1.5 h-1.5 rounded-full shrink-0',
+                            cat.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400',
+                          )}
+                        />
                         <span className="truncate">{cat.name}</span>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 shrink-0">
+                        <div className="hidden group-hover:flex items-center gap-0.5">
                           <button
-                            onClick={(e) => { e.stopPropagation(); openCategoryModal(cat); }}
-                            className="p-0.5 rounded transition-colors hover:bg-slate-200 text-slate-500"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openCategoryModal(cat);
+                            }}
+                            className="p-1 rounded hover:bg-slate-200 text-slate-500"
                           >
-                            <Edit2 className="h-2.5 w-2.5" />
+                            <Edit2 className="h-3 w-3" />
                           </button>
                           <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat.id, e); }}
-                            className="p-0.5 rounded transition-colors hover:bg-red-50 text-red-550"
+                            type="button"
+                            onClick={(e) => handleDeleteCategory(cat.id, e)}
+                            className="p-1 rounded hover:bg-red-50 text-red-500"
                           >
-                            <Trash2 className="h-2.5 w-2.5" />
+                            <Trash2 className="h-3 w-3" />
                           </button>
                         </div>
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition-all ${
-                          isActive ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-600'
-                        }`}>
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.5 rounded text-[10px] font-semibold',
+                            isActive ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-600',
+                          )}
+                        >
                           {categoryTemplateCounts[cat.id] || 0}
                         </span>
                       </div>
@@ -387,101 +448,88 @@ export default function TemplatesPage() {
                 })
               )}
             </div>
-          </div>
+          </aside>
 
-          <div
-            className="flex-1 flex flex-col bg-white border overflow-hidden shadow-sm"
-            style={{ borderColor: '#E5E7EB', borderRadius: '12px' }}
-          >
-            <div
-              className="p-4 border-b bg-white flex flex-col md:flex-row md:items-center justify-between gap-3"
-              style={{ borderColor: '#EEF2F6' }}
-            >
+          <div className="flex-1 min-w-0 bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">
-                  {categories.find(c => c.id === selectedCategoryId)?.name || 'Templates'} List
-                </h3>
-                <p className="text-[11px] text-slate-500 mt-0.5 font-medium">
-                  Select and manage templates inside this communication category.
+                <h2 className="font-display text-lg font-semibold text-slate-900 tracking-tight">
+                  {selectedCategory?.name || 'Templates'}
+                </h2>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  {channelTemplates.length} {channelFilter} template
+                  {channelTemplates.length === 1 ? '' : 's'} · {filteredTemplates.length} in this category
                 </p>
               </div>
-              <div className="w-full md:w-72">
-                <SearchBar
-                  placeholder="Search template name..."
-                  onSearch={setSearchTerm}
-                />
+              <div className="w-full sm:w-72">
+                <SearchBar placeholder="Search templates…" onSearch={setSearchTerm} />
               </div>
             </div>
 
-            <div className="overflow-x-auto flex-1">
-              <table className="w-full">
-                <thead className="bg-white border-b" style={{ borderColor: '#EEF2F6' }}>
-                  <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    <th className="px-6 py-3.5 font-semibold w-16 text-center">S.No</th>
-                    <th className="px-6 py-3.5 font-semibold">Template Name</th>
-                    {channelFilter === 'email' && <th className="px-6 py-3.5 font-semibold">Subject Line</th>}
-                    <th className="px-6 py-3.5 font-semibold">Type</th>
-                    <th className="px-6 py-3.5 font-semibold w-24 text-right">Actions</th>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 border-b border-slate-100">
+                    <th className="px-6 py-3 w-14 text-center">Sr No</th>
+                    <th className="px-6 py-3">Template Name</th>
+                    <th className="px-6 py-3">
+                      {channelFilter === 'email' ? 'Subject' : 'Title'}
+                    </th>
+                    <th className="px-6 py-3">Type</th>
+                    <th className="px-6 py-3 text-right w-24">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredTemplates.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="px-6 py-12 text-center text-sm text-slate-500 font-medium">
-                        No templates found in this category. Click Add New Template to start drafting.
+                      <td colSpan={5} className="px-6 py-12 text-center text-sm text-slate-500">
+                        No templates in this category. Click Add Template to create one.
                       </td>
                     </tr>
                   ) : (
-                    filteredTemplates.map((temp, index) => {
-                      return (
-                        <tr
-                          key={temp.id}
-                          className="border-b hover:bg-slate-55 transition-colors bg-white select-none"
-                          style={{ borderColor: '#F1F5F9' }}
-                        >
-                          <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs font-semibold">
-                            {String(index + 1).padStart(2, '0')}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span style={{ color: '#0F172A', fontSize: '13px', fontWeight: '600' }} className="whitespace-nowrap">
-                              {temp.name}
-                            </span>
-                          </td>
-                          {channelFilter === 'email' && (
-                            <td className="px-6 py-4 text-[13px] text-slate-650 font-medium whitespace-nowrap">
-                              {temp.subject || '-'}
-                            </td>
-                          )}
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border ${
+                    filteredTemplates.map((temp, index) => (
+                      <tr key={temp.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-6 py-3.5 text-center text-slate-400 font-mono text-xs">
+                          {String(index + 1).padStart(2, '0')}
+                        </td>
+                        <td className="px-6 py-3.5 font-medium text-slate-900">{temp.name}</td>
+                        <td className="px-6 py-3.5 text-slate-600 max-w-xs truncate">
+                          {temp.subject || '—'}
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <span
+                            className={cn(
+                              'inline-flex px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border',
                               temp.type === 'Transactional'
                                 ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                : 'bg-purple-50 text-purple-700 border-purple-200'
-                            }`}>
-                              {temp.type}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <Button
-                                variant="ghost"
-                                onClick={() => openTemplateModal(temp)}
-                                className="h-7 w-7 p-0 rounded-md hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
-                              >
-                                <Edit2 className="h-3.5 w-3.5 text-slate-500" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                onClick={() => handleDeleteTemplate(temp.id)}
-                                className="h-7 w-7 p-0 rounded-md hover:bg-red-50 hover:text-red-650 cursor-pointer"
-                              >
-                                <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
+                                : 'bg-violet-50 text-violet-700 border-violet-200',
+                            )}
+                          >
+                            {temp.type}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3.5 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => openTemplateModal(temp)}
+                            >
+                              <Edit2 className="h-3.5 w-3.5 text-slate-500" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-red-50"
+                              onClick={() => handleDeleteTemplate(temp.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
@@ -490,84 +538,47 @@ export default function TemplatesPage() {
         </div>
 
         <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
-          <DialogContent className="sm:max-w-[650px] max-h-[90vh] flex flex-col overflow-hidden bg-white border border-slate-250 p-6 shadow-xl rounded-xl z-[100]">
-            <DialogHeader className="pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <Sliders className="h-5 w-5 text-slate-500" />
-                <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2 font-display">
-                  {editingCategory ? 'Edit' : 'Create'} Category
-                </DialogTitle>
-              </div>
-              <DialogDescription className="text-xs text-slate-550 mt-1">
-                Configure taxonomic metadata categories filtered under the active channel.
+          <DialogContent className="sm:max-w-md bg-white rounded-xl p-6">
+            <DialogHeader>
+              <DialogTitle className="font-display flex items-center gap-2">
+                <Sliders className="h-4 w-4 text-slate-500" />
+                {editingCategory ? 'Edit' : 'New'} Category
+              </DialogTitle>
+              <DialogDescription>
+                {channelFilter === 'email' ? 'Email' : 'Push'} template group for Communication.
               </DialogDescription>
             </DialogHeader>
-
-            <div className="flex-1 overflow-y-auto py-5 space-y-5">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="cat-name" className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                  Category Name
-                </Label>
+            <div className="space-y-4 py-2">
+              <Field label="Category Name">
                 <Input
-                  id="cat-name"
                   value={catFormName}
                   onChange={(e) => setCatFormName(e.target.value)}
-                  placeholder="e.g. Account Registration Alerts"
-                  className="h-10 bg-slate-50/50 border-slate-200 text-sm focus:bg-white transition-colors border focus-visible:ring-slate-900 focus-visible:ring-1 focus-visible:border-slate-900 focus-visible:outline-none"
+                  className="h-10"
+                  placeholder="e.g. Billing Receipts"
                 />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                  Active Status
-                </Label>
-                <RadioGroup
-                  value={catFormStatus}
-                  onValueChange={setCatFormStatus}
-                  className="flex gap-6 mt-1.5"
-                >
-                  <div className="flex items-center gap-2 cursor-pointer select-none">
-                    <RadioGroupItem
-                      value="active"
-                      id="status-active"
-                      className="border-slate-400 border-2"
-                    />
-                    <Label
-                      htmlFor="status-active"
-                      className="text-xs font-semibold cursor-pointer text-emerald-700"
-                    >
+              </Field>
+              <Field label="Status">
+                <RadioGroup value={catFormStatus} onValueChange={setCatFormStatus} className="flex gap-6">
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="active" id="cat-active" />
+                    <Label htmlFor="cat-active" className="text-sm font-medium cursor-pointer">
                       Active
                     </Label>
                   </div>
-                  <div className="flex items-center gap-2 cursor-pointer select-none">
-                    <RadioGroupItem
-                      value="inactive"
-                      id="status-inactive"
-                      className="border-slate-400 border-2"
-                    />
-                    <Label
-                      htmlFor="status-inactive"
-                      className="text-xs font-semibold cursor-pointer text-slate-500"
-                    >
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="inactive" id="cat-inactive" />
+                    <Label htmlFor="cat-inactive" className="text-sm font-medium cursor-pointer">
                       Inactive
                     </Label>
                   </div>
                 </RadioGroup>
-              </div>
+              </Field>
             </div>
-
-            <DialogFooter className="pb-6 px-6 pt-4 border-t border-slate-100 mt-auto flex items-center justify-end gap-2 w-full">
-              <Button
-                variant="outline"
-                className="h-9 px-4 text-xs font-semibold"
-                onClick={() => setCategoryModalOpen(false)}
-              >
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setCategoryModalOpen(false)}>
                 Cancel
               </Button>
-              <Button
-                className="h-9 px-4 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white"
-                onClick={handleSaveCategory}
-              >
+              <Button className="bg-slate-900 hover:bg-slate-800 text-white" onClick={handleSaveCategory}>
                 Save Category
               </Button>
             </DialogFooter>
@@ -575,220 +586,146 @@ export default function TemplatesPage() {
         </Dialog>
 
         <Dialog open={templateModalOpen} onOpenChange={setTemplateModalOpen}>
-          <DialogContent className="sm:max-w-4xl lg:max-w-[900px] max-h-[90vh] flex flex-col overflow-hidden bg-white border border-slate-250 p-6 shadow-xl rounded-xl z-[100]">
-            <DialogHeader className="pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <FileCode className="h-5 w-5 text-slate-500" />
-                <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2 font-display">
-                  {editingTemplate ? 'Modify' : 'Draft New'} Transactional Layout
-                </DialogTitle>
-              </div>
-              <DialogDescription className="text-xs text-slate-550 mt-1">
-                Configure template content variables and customize template layouts.
+          <DialogContent className={TEMPLATE_DIALOG_SHELL}>
+            <DialogHeader className="shrink-0 px-6 pt-6 pb-4 border-b border-slate-100">
+              <DialogTitle className="font-display flex items-center gap-2 text-left">
+                <FileCode className="h-4 w-4 text-slate-500" />
+                {editingTemplate ? 'Edit' : 'New'}{' '}
+                {channelFilter === 'email' ? 'Email' : 'Push'} Template
+              </DialogTitle>
+              <DialogDescription className="text-left">
+                {channelFilter === 'email'
+                  ? 'Rich HTML body with variables for bulk and member email.'
+                  : 'Short push copy for phone notifications (max 240 characters).'}
               </DialogDescription>
             </DialogHeader>
 
-            <div className="flex-1 overflow-y-auto py-5 space-y-4 pr-1">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="temp-name" className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    Template Name
-                  </Label>
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Field label="Template Name">
                   <Input
-                    id="temp-name"
                     value={tempFormName}
                     onChange={(e) => setTempFormName(e.target.value)}
-                    placeholder="e.g. Account Security Code"
-                    className="h-10 bg-slate-50/50 border-slate-200 text-sm focus:bg-white transition-colors border focus-visible:ring-slate-900 focus-visible:ring-1"
+                    className="h-10"
+                    placeholder="e.g. Payment receipt"
                   />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="temp-category" className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    Linked Category
-                  </Label>
-                  <select
-                    id="temp-category"
-                    value={tempFormCategoryId}
-                    onChange={(e) => setTempFormCategoryId(e.target.value)}
-                    className="w-full h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 bg-slate-50/50 hover:bg-slate-100/50 transition-colors focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
-                  >
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>{c.name} ({c.channel.toUpperCase()})</option>
-                    ))}
-                  </select>
-                </div>
+                </Field>
+                <Field label="Category">
+                  <Select value={tempFormCategoryId} onValueChange={setTempFormCategoryId}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories
+                        .filter((c) => c.channel === channelFilter)
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
               </div>
 
-              {channelFilter === 'email' && (
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="temp-subject" className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    Subject Line
-                  </Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Field label={channelFilter === 'email' ? 'Subject' : 'Notification Title'}>
                   <Input
-                    id="temp-subject"
                     value={tempFormSubject}
                     onChange={(e) => setTempFormSubject(e.target.value)}
-                    placeholder="e.g. Verification details for {name}"
-                    className="h-10 bg-slate-50/50 border-slate-200 text-sm focus:bg-white transition-colors border focus-visible:ring-slate-900"
+                    className="h-10"
+                    placeholder={
+                      channelFilter === 'email'
+                        ? "e.g. Welcome, {name}!"
+                        : 'e.g. Plan renewal reminder'
+                    }
                   />
-                </div>
-              )}
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="temp-type" className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                  Template Type
-                </Label>
-                <select
-                  id="temp-type"
-                  value={tempFormType}
-                  onChange={(e) => setTempFormType(e.target.value as any)}
-                  className="w-full h-10 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 bg-slate-50/50 hover:bg-slate-100/50 transition-colors focus:bg-white focus:outline-none focus:ring-1 focus:ring-slate-900"
-                >
-                  <option value="Transactional">Transactional</option>
-                  <option value="Marketing">Marketing</option>
-                </select>
+                </Field>
+                <Field label="Template Type">
+                  <Select
+                    value={tempFormType}
+                    onValueChange={(v) => setTempFormType(v as 'Transactional' | 'Marketing')}
+                  >
+                    <SelectTrigger className="h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Transactional">Transactional</SelectItem>
+                      <SelectItem value="Marketing">Marketing</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <div className="flex justify-between items-center mb-1">
-                  <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    Template Content & Variables
-                  </Label>
-                  <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
-                    <Info className="h-3 w-3 text-slate-450" />
-                    Click placeholder badges below to inject variables
-                  </span>
-                </div>
+              <div className="flex flex-wrap gap-1.5">
+                {PLACEHOLDER_TOKENS.map((p) => (
+                  <button
+                    key={p.token}
+                    type="button"
+                    onClick={() => insertPlaceholder(p.token)}
+                    className="px-2 py-1 rounded-md border border-slate-200 bg-slate-50 text-[10px] font-mono font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
+                  >
+                    {p.token}
+                  </button>
+                ))}
+                <Popover open={varOpen} onOpenChange={setVarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" className="h-7 text-xs ml-auto">
+                      <Variable className="h-3 w-3 mr-1" />
+                      Variables
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-[260px] p-2">
+                    {EMAIL_VARIABLES.map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => insertVariable(v.id)}
+                        className="w-full text-left px-2 py-1.5 rounded-md hover:bg-slate-100 text-sm flex justify-between"
+                      >
+                        <span>{v.label}</span>
+                        <span className="text-[10px] font-mono text-slate-400">{`{{${v.id}}}`}</span>
+                      </button>
+                    ))}
+                  </PopoverContent>
+                </Popover>
+              </div>
 
-                <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-lg border border-slate-200 bg-slate-50/50 mb-1">
-                  <button
-                    type="button"
-                    onClick={() => insertPlaceholder('{name}')}
-                    className="px-2 py-1 bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-55 rounded text-[10px] font-mono font-bold text-slate-700 cursor-pointer flex items-center gap-1"
-                  >
-                    <Tag className="h-2.5 w-2.5 text-blue-500" />
-                    <span>{`{name}`}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertPlaceholder('{company}')}
-                    className="px-2 py-1 bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-55 rounded text-[10px] font-mono font-bold text-slate-700 cursor-pointer flex items-center gap-1"
-                  >
-                    <Tag className="h-2.5 w-2.5 text-blue-500" />
-                    <span>{`{company}`}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertPlaceholder('{plan}')}
-                    className="px-2 py-1 bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-55 rounded text-[10px] font-mono font-bold text-slate-700 cursor-pointer flex items-center gap-1"
-                  >
-                    <Tag className="h-2.5 w-2.5 text-blue-500" />
-                    <span>{`{plan}`}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertPlaceholder('{expiry}')}
-                    className="px-2 py-1 bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-55 rounded text-[10px] font-mono font-bold text-slate-700 cursor-pointer flex items-center gap-1"
-                  >
-                    <Tag className="h-2.5 w-2.5 text-blue-500" />
-                    <span>{`{expiry}`}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertPlaceholder('{invoiceNum}')}
-                    className="px-2 py-1 bg-white border border-slate-200 hover:border-slate-350 hover:bg-slate-55 rounded text-[10px] font-mono font-bold text-slate-700 cursor-pointer flex items-center gap-1"
-                  >
-                    <Tag className="h-2.5 w-2.5 text-blue-500" />
-                    <span>{`{invoiceNum}`}</span>
-                  </button>
-                </div>
-
-                <div className="border border-slate-200 rounded-lg overflow-hidden flex flex-col focus-within:ring-1 focus-within:ring-slate-900">
-                  <div className="bg-slate-50 border-b border-slate-200 px-3 py-1.5 flex flex-wrap items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleEditorFormat('bold')}
-                      className="h-6 w-6 flex items-center justify-center rounded-md hover:bg-slate-200 text-slate-600 cursor-pointer"
-                    >
-                      <Bold className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleEditorFormat('italic')}
-                      className="h-6 w-6 flex items-center justify-center rounded-md hover:bg-slate-200 text-slate-600 cursor-pointer"
-                    >
-                      <Italic className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleEditorFormat('underline')}
-                      className="h-6 w-6 flex items-center justify-center rounded-md hover:bg-slate-200 text-slate-600 cursor-pointer"
-                    >
-                      <Underline className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleEditorFormat('strikethrough')}
-                      className="h-6 w-6 flex items-center justify-center rounded-md hover:bg-slate-200 text-slate-600 cursor-pointer"
-                    >
-                      <Strikethrough className="h-3.5 w-3.5" />
-                    </button>
-                    <div className="h-4 w-px bg-slate-200 mx-1" />
-                    <button
-                      type="button"
-                      onClick={() => handleEditorFormat('bulletList')}
-                      className="h-6 w-6 flex items-center justify-center rounded-md hover:bg-slate-200 text-slate-600 cursor-pointer"
-                    >
-                      <List className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleEditorFormat('orderedList')}
-                      className="h-6 w-6 flex items-center justify-center rounded-md hover:bg-slate-200 text-slate-600 cursor-pointer"
-                    >
-                      <ListOrdered className="h-3.5 w-3.5" />
-                    </button>
-                    <div className="h-4 w-px bg-slate-200 mx-1" />
-                    <button
-                      type="button"
-                      onClick={() => handleEditorFormat('image')}
-                      className="h-6 w-6 flex items-center justify-center rounded-md hover:bg-slate-200 text-slate-600 cursor-pointer"
-                    >
-                      <ImageIcon className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleEditorFormat('link')}
-                      className="h-6 w-6 flex items-center justify-center rounded-md hover:bg-slate-200 text-slate-600 cursor-pointer"
-                    >
-                      <Link2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <textarea
+              {channelFilter === 'email' ? (
+                <div className="min-h-[220px] flex flex-col">
+                  <RichTextEditor
                     value={tempFormContent}
-                    onChange={(e) => setTempFormContent(e.target.value)}
-                    placeholder="Draft template content details here..."
-                    rows={8}
-                    className="w-full text-sm p-3 focus:outline-none resize-none bg-white text-slate-800 font-sans"
+                    onChange={setTempFormContent}
+                    placeholder="Draft email HTML content…"
+                    onEditorReady={setEditorRef}
+                    fillHeight
+                    className="min-h-[220px]"
                   />
                 </div>
-              </div>
+              ) : (
+                <Field
+                  label="Push Message"
+                  hint={`${tempFormContent.length}/${PUSH_CHAR_LIMIT} characters`}
+                >
+                  <Textarea
+                    value={tempFormContent}
+                    onChange={(e) =>
+                      setTempFormContent(e.target.value.slice(0, PUSH_CHAR_LIMIT))
+                    }
+                    rows={5}
+                    className="resize-none text-sm"
+                    placeholder="Short alert text for mobile devices…"
+                  />
+                </Field>
+              )}
             </div>
 
-            <DialogFooter className="pb-6 px-6 pt-4 border-t border-slate-100 mt-auto flex items-center justify-end gap-2 w-full">
-              <Button
-                variant="outline"
-                className="h-9 px-4 text-xs font-semibold"
-                onClick={() => setTemplateModalOpen(false)}
-              >
+            <DialogFooter className="shrink-0 px-6 py-4 border-t border-slate-100 gap-2">
+              <Button variant="outline" onClick={() => setTemplateModalOpen(false)}>
                 Cancel
               </Button>
-              <Button
-                className="h-9 px-4 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white"
-                onClick={handleSaveTemplate}
-              >
-                Save Layout
+              <Button className="bg-slate-900 hover:bg-slate-800 text-white" onClick={handleSaveTemplate}>
+                Save Template
               </Button>
             </DialogFooter>
           </DialogContent>

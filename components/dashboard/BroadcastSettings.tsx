@@ -228,7 +228,6 @@ export function BroadcastSettings({ memberId, memberName }: BroadcastSettingsPro
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Radio className="h-4 w-4 text-slate-500" />
               <h3 className="font-display text-lg font-semibold text-slate-900">
                 Broadcast Categories
               </h3>

@@ -4,8 +4,6 @@ import { useState, useEffect, useMemo, Fragment } from 'react';
 import {
   FileText,
   Search,
-  ChevronDown,
-  ChevronUp,
   Mail,
   Download,
   Trash2,
@@ -14,12 +12,10 @@ import {
   AlertTriangle,
   Building,
   MapPin,
-  Calendar,
   CheckCircle2,
   XCircle,
   HelpCircle,
   Plus,
-  MoreVertical,
   Bold,
   Italic,
   Underline,
@@ -54,11 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { InvoiceRowActionsMenu } from '@/components/dashboard/InvoiceRowActionsMenu';
 import { SearchBar } from '@/components/dashboard/SearchBar';
 import { StatusBadge } from '@/components/dashboard/StatusBadge';
 import { RECIPIENT_BANKS, PAYMENT_MODES } from '@/lib/invoice-utils';
@@ -393,205 +385,139 @@ export default function InvoicesPage() {
           className="bg-white border overflow-hidden" 
           style={{ borderColor: '#E5E7EB', borderTopLeftRadius: '0', borderTopRightRadius: '0', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}
         >
-          <table className="w-full">
+          <table className="w-full text-sm">
             <thead className="bg-white border-b animate-none" style={{ borderColor: '#EEF2F6' }}>
               <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                <th className="px-6 py-3.5 font-semibold w-12 text-center"></th>
-                <th className="px-6 py-3.5 font-semibold w-16 text-center whitespace-nowrap">SR.NO</th>
-                <th className="px-6 py-3.5 font-semibold">COMPANY INFORMATION</th>
-                <th className="px-6 py-3.5 font-semibold">INVOICE DATE</th>
-                <th className="px-6 py-3.5 font-semibold">INVOICE NUMBER</th>
-                <th className="px-6 py-3.5 font-semibold">PLAN & VALIDITY</th>
-                <th className="px-6 py-3.5 font-semibold">BILLING AMOUNT</th>
-                <th className="px-6 py-3.5 font-semibold">STATUS</th>
-                <th className="px-6 py-3.5 font-semibold text-center w-28 whitespace-nowrap">ACTIONS</th>
+                <th className="px-6 py-3 w-16 text-center">SR NO</th>
+                <th className="px-6 py-3">Company</th>
+                <th className="px-6 py-3">Date</th>
+                <th className="px-6 py-3">Plan &amp; Validity</th>
+                <th className="px-6 py-3">Invoice</th>
+                <th className="px-6 py-3">Amount</th>
+                <th className="px-6 py-3">Status</th>
+                <th className="px-4 py-3 text-center w-28">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-slate-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-sm text-slate-500">
                     Loading invoices...
                   </td>
                 </tr>
               ) : filteredInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-slate-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-sm text-slate-500">
                     No transactions found matching the selected filter criteria.
                   </td>
                 </tr>
               ) : (
                 filteredInvoices.map((inv, index) => {
                   const isExpanded = expandedInvoiceId === inv.id;
+                  const isPaid = inv.status === 'Paid';
                   const displayIndex = String(index + 1).padStart(2, '0');
-                  
+
                   return (
                     <Fragment key={inv.id}>
-                      <tr 
+                      <tr
                         className="hover:bg-slate-50/40 bg-white border-b transition-colors cursor-pointer select-none"
                         style={{ borderColor: '#F1F5F9' }}
                         onClick={() => toggleRow(inv.id)}
                       >
-                        <td className="px-6 py-4 text-center w-12 text-slate-400">
-                          <div className="flex justify-center">
-                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                          </div>
-                        </td>
-
                         <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs font-semibold w-16">
                           {displayIndex}
                         </td>
-
                         <td className="px-6 py-4">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-semibold text-slate-900 text-[13px] flex items-center gap-1.5">
-                              <Building className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                              {inv.companyName}
-                            </span>
-                            <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
-                              <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
-                              {inv.location}
-                            </span>
+                          <div className="font-semibold text-slate-900 text-[13px] flex items-center gap-1.5">
+                            <Building className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            {inv.companyName}
+                          </div>
+                          <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                            <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                            {inv.location}
                           </div>
                         </td>
-
-                        <td className="px-6 py-4 w-36 text-[13px] text-slate-650 font-medium whitespace-nowrap">
-                          <span className="flex items-center gap-1.5">
-                            <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                            {inv.creationDate}
-                          </span>
+                        <td className="px-6 py-4 whitespace-nowrap text-[13px] text-slate-700 font-medium">
+                          {inv.creationDate}
                         </td>
-
-                        <td className="px-6 py-4 w-44 text-[13px] text-slate-650 font-medium whitespace-nowrap">
-                          {inv.invoiceNumber}
-                        </td>
-
                         <td className="px-6 py-4">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-semibold text-slate-900 text-[13px]">
-                              {inv.associatedPlan}
-                            </span>
-                            <span className="text-xs text-slate-500 mt-0.5">
-                              {inv.validityStart} to {inv.validityEnd}
-                            </span>
+                          <div className="font-semibold text-slate-900 text-[13px]">{inv.associatedPlan}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">
+                            {inv.validityStart} to {inv.validityEnd}
                           </div>
                         </td>
-
-                        <td className="px-6 py-4 w-32 text-[13px] text-slate-650 font-medium whitespace-nowrap">
+                        <td className="px-6 py-4">
+                          <div className="font-semibold text-slate-900 text-[13px]">{inv.invoiceNumber}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">{inv.creationDate}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-[13px] font-medium text-slate-800">
                           {inv.billingAmount}
                         </td>
-
                         <td className="px-6 py-4 w-28">
                           <StatusBadge status={inv.status} />
                         </td>
-
-                        <td 
-                          className="px-6 py-4 text-center w-28"
+                        <td
+                          className="px-4 py-4 text-center w-28"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8 text-slate-500 hover:text-slate-750 border border-slate-200 hover:bg-slate-50 rounded-md cursor-pointer bg-white"
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-44 p-1.5 border border-slate-200 bg-white shadow-lg rounded-lg z-50 focus:outline-hidden">
-                              <div className="flex flex-col gap-0.5 text-xs">
-                                <button
-                                  onClick={() => triggerStatusEdit(inv)}
-                                  className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 text-slate-700 rounded-md transition-colors text-left cursor-pointer font-semibold"
-                                >
-                                  <Edit className="h-3.5 w-3.5 text-slate-400" />
-                                  Update Status
-                                </button>
-                                <button
-                                  onClick={() => triggerSendEmail(inv)}
-                                  className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 text-slate-700 rounded-md transition-colors text-left cursor-pointer font-semibold"
-                                >
-                                  <Mail className="h-3.5 w-3.5 text-slate-400" />
-                                  Send Email
-                                </button>
-                                <button
-                                  onClick={() => triggerPdfDownload(inv)}
-                                  className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 text-slate-700 rounded-md transition-colors text-left cursor-pointer font-semibold"
-                                >
-                                  <Download className="h-3.5 w-3.5 text-slate-400" />
-                                  Download PDF
-                                </button>
-                                <div className="h-px bg-slate-100 my-1" />
-                                <button
-                                  onClick={() => {
-                                    setDeletingInvoice(inv);
-                                    setDeleteDialogOpen(true);
-                                  }}
-                                  className="w-full flex items-center gap-2 px-2.5 py-2 hover:bg-red-50 text-red-650 hover:text-red-750 rounded-md transition-colors text-left cursor-pointer font-semibold"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5 text-red-400" />
-                                  Delete
-                                </button>
-                              </div>
-                            </PopoverContent>
-                          </Popover>
+                          <InvoiceRowActionsMenu
+                            testIdPrefix={`invoice-${inv.id}`}
+                            onUpdateStatus={() => triggerStatusEdit(inv)}
+                            onSendEmail={() => triggerSendEmail(inv)}
+                            onDownloadPdf={() => triggerPdfDownload(inv)}
+                            onDelete={() => {
+                              setDeletingInvoice(inv);
+                              setDeleteDialogOpen(true);
+                            }}
+                          />
                         </td>
                       </tr>
 
                       {isExpanded && (
-                        <tr className="bg-slate-50/50">
-                          <td colSpan={9} className="p-5 pl-18 border-b" style={{ borderColor: '#EEF2F6' }}>
-                            <div className="space-y-3">
-                              <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                                <DollarSign className="h-3.5 w-3.5 text-slate-400" /> Bank Settlement Details
+                        <tr className="bg-slate-50/30">
+                          <td colSpan={8} className="px-6 py-4 border-b" style={{ borderColor: '#EEF2F6' }}>
+                            <div className="p-4 rounded-lg bg-blue-50/40 border border-blue-100 max-w-4xl">
+                              <h4 className="text-[10px] font-bold uppercase tracking-wider text-blue-700 mb-3 flex items-center gap-1.5">
+                                <DollarSign className="h-3.5 w-3.5" />
+                                Invoice Settlement
                               </h4>
-                              
-                              <div
-                                className={cn(
-                                  'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 max-w-5xl bg-white border border-slate-200 p-4 rounded-xl shadow-xs',
-                                  (inv.status !== 'Paid' || !inv.settlementDetails) && 'bg-slate-50/80',
-                                )}
-                              >
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 text-xs">
                                 {[
                                   {
                                     label: 'Settlement Date',
-                                    value: inv.settlementDetails?.settlementDate,
-                                    valueClass: 'text-slate-800',
+                                    value: inv.settlementDetails?.settlementDate || '—',
                                   },
                                   {
                                     label: 'Amount Paid',
-                                    value: inv.settlementDetails?.amountPaid,
-                                    valueClass: 'text-emerald-700 font-mono',
+                                    value: inv.settlementDetails?.amountPaid || '—',
                                   },
                                   {
                                     label: 'Recipient Bank',
-                                    value: inv.settlementDetails?.recipientBank,
-                                    valueClass: 'text-slate-800',
+                                    value: inv.settlementDetails?.recipientBank || '—',
                                   },
                                   {
                                     label: 'Payment Mode',
-                                    value: inv.settlementDetails?.paymentMode,
-                                    valueClass: 'text-slate-800',
+                                    value: inv.settlementDetails?.paymentMode || '—',
                                   },
                                   {
-                                    label: 'Reference Number',
-                                    value: inv.settlementDetails?.referenceNumber,
-                                    valueClass: 'text-slate-700 font-mono',
+                                    label: 'Reference',
+                                    value: inv.settlementDetails?.referenceNumber || '—',
                                   },
                                 ].map((field) => (
-                                  <div key={field.label} className="flex flex-col gap-1">
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">
+                                  <div key={field.label}>
+                                    <div className="text-[9px] font-bold uppercase tracking-wide text-slate-500 mb-0.5">
                                       {field.label}
-                                    </span>
-                                    <span
+                                    </div>
+                                    <div
                                       className={cn(
-                                        'text-xs font-semibold min-h-[16px]',
-                                        field.value ? field.valueClass : 'text-slate-300 font-normal',
+                                        'font-semibold',
+                                        isPaid && field.label === 'Amount Paid'
+                                          ? 'text-emerald-700 font-mono'
+                                          : 'text-slate-800',
                                       )}
                                     >
-                                      {field.value || '—'}
-                                    </span>
+                                      {field.value}
+                                    </div>
                                   </div>
                                 ))}
                               </div>

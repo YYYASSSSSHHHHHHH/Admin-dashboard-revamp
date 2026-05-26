@@ -70,7 +70,6 @@ export default function MembershipLabelPage() {
   const [newPlanRate, setNewPlanRate] = useState('');
   const [newDuration, setNewDuration] = useState('');
   const [newHexColor, setNewHexColor] = useState('#e2e8f0');
-  const [newStatus, setNewStatus] = useState<'active' | 'inactive'>('active');
   const [newFeatures, setNewFeatures] = useState<FeaturePrivilege[]>([
     { key: 'Daily Broadcast', type: 'value', value: '5' },
     { key: 'Send to all', type: 'no', value: '' },
@@ -168,7 +167,7 @@ export default function MembershipLabelPage() {
           planName: newPlanName.trim(),
           planRate: newPlanRate.trim(),
           duration: newDuration.trim(),
-          status: newStatus,
+          status: 'active',
           features: newFeatures.filter(f => f.key.trim() !== '')
         })
       });
@@ -182,7 +181,6 @@ export default function MembershipLabelPage() {
       setNewPlanRate('');
       setNewDuration('');
       setNewHexColor('#e2e8f0');
-      setNewStatus('active');
       setNewFeatures([
         { key: 'Daily Broadcast', type: 'value', value: '5' },
         { key: 'Send to all', type: 'no', value: '' },
@@ -466,20 +464,6 @@ export default function MembershipLabelPage() {
                     <Input id="create-hex" placeholder="e.g. #4880FF" value={newHexColor} onChange={(e) => setNewHexColor(e.target.value)} className="h-10 bg-slate-50/50 border-slate-200 text-sm focus:bg-white font-mono animate-none flex-1" required />
                   </div>
                   <p className="text-[10px] text-slate-450">Color circle preview dynamically updates if valid format starts with #.</p>
-                </div>
-
-                <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Status</Label>
-                  <div className="flex items-center gap-6">
-                    <label className="flex items-center gap-2 text-xs text-slate-800 font-semibold cursor-pointer select-none">
-                      <input type="radio" name="create-status" checked={newStatus === 'active'} onChange={() => setNewStatus('active')} className="h-4 w-4 accent-slate-900 cursor-pointer" />
-                      Active
-                    </label>
-                    <label className="flex items-center gap-2 text-xs text-slate-800 font-semibold cursor-pointer select-none">
-                      <input type="radio" name="create-status" checked={newStatus === 'inactive'} onChange={() => setNewStatus('inactive')} className="h-4 w-4 accent-slate-900 cursor-pointer" />
-                      Inactive
-                    </label>
-                  </div>
                 </div>
 
               </div>

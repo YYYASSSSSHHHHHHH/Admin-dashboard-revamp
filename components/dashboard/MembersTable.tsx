@@ -21,11 +21,12 @@ interface Member {
 
 interface MembersTableProps {
   members: Member[];
+  pageOffset?: number;
 }
 
-export function MembersTable({ members }: MembersTableProps) {
+export function MembersTable({ members, pageOffset = 0 }: MembersTableProps) {
   return (
-    <div className="bg-white border overflow-hidden" style={{ borderColor: '#E5E7EB', borderTopLeftRadius: '0', borderTopRightRadius: '0', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}>
+    <div className="bg-white border overflow-hidden" style={{ borderColor: '#E5E7EB', borderTopLeftRadius: '0', borderTopRightRadius: '0', borderBottomLeftRadius: '0', borderBottomRightRadius: '0' }}>
       <table className="w-full">
         <thead className="bg-white border-b" style={{ borderColor: '#EEF2F6' }}>
           <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
@@ -48,7 +49,7 @@ export function MembersTable({ members }: MembersTableProps) {
             </tr>
           ) : (
             members.map((member, index) => (
-              <TableRow key={member.id} member={member} index={index} />
+              <TableRow key={member.id} member={member} index={pageOffset + index} />
             ))
           )}
         </tbody>

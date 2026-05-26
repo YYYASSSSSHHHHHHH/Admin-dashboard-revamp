@@ -2,23 +2,23 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Mail,
+  Bell,
   Send,
   Save,
   Variable,
   Search,
   Check,
   ChevronsUpDown,
-  BadgeCheck,
+  Smartphone,
   Users,
   Loader2,
 } from 'lucide-react';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { Header } from '@/components/dashboard/Header';
-import { RichTextEditor } from '@/components/dashboard/RichTextEditor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -35,24 +35,36 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  FROM_EMAILS,
-  EMAIL_TYPES,
-  EMAIL_VARIABLES,
-  MEMBERS,
-} from '@/lib/dashboard-mock-data';
+import { EMAIL_TYPES, EMAIL_VARIABLES, MEMBERS } from '@/lib/dashboard-mock-data';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+const PUSH_SENDERS = [
+  { id: 'app', name: 'Northgate App', subtitle: 'Default app notifications' },
+  { id: 'alerts', name: 'Security Alerts', subtitle: 'Account & login alerts' },
+  { id: 'billing', name: 'Billing Updates', subtitle: 'Invoices & renewals' },
+];
+
+const PUSH_CHAR_LIMIT = 240;
 
 interface ApiTemplate {
   id: string;
   name: string;
-  subject: string;
+  subject?: string;
   body?: string;
   content?: string;
   categoryId: string | number;
-  type?: string;
 }
+
+type MemberOption = {
+  id: string;
+  name: string;
+  email: string;
+  company: string;
+  avatar: string;
+  status?: string;
+  verified?: boolean;
+};
 
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
@@ -66,33 +78,25 @@ function Field({ label, children, hint }: { label: string; children: React.React
   );
 }
 
-function stripHtml(html: string) {
-  if (!html) return '';
-  const tmp = document.createElement('div');
-  tmp.innerHTML = html;
-  return (tmp.textContent || tmp.innerText || '').trim();
-}
-
 const AUDIENCE_PRESETS = [
   { id: 'all', label: 'All members' },
   { id: 'active', label: 'Active members' },
   { id: 'verified', label: 'Verified members' },
 ] as const;
 
-export default function SendEmailPage() {
+export default function SendNotificationPage() {
   const [recipientIds, setRecipientIds] = useState<string[]>([]);
   const [recipientOpen, setRecipientOpen] = useState(false);
-  const [fromId, setFromId] = useState('ops');
+  const [senderId, setSenderId] = useState('app');
   const [typeId, setTypeId] = useState('');
   const [templateId, setTemplateId] = useState('');
-  const [subject, setSubject] = useState('');
+  const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
-  const [editorRef, setEditorRef] = useState<any>(null);
   const [varOpen, setVarOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [allTemplates, setAllTemplates] = useState<ApiTemplate[]>([]);
-  const [members, setMembers] = useState(MEMBERS);
-  const [audiencePreset, setAudiencePreset] = useState<string>('');
+  const [pushTemplates, setPushTemplates] = useState<ApiTemplate[]>([]);
+  const [members, setMembers] = useState<MemberOption[]>(MEMBERS);
+  const [audiencePreset, setAudiencePreset] = useState('');
 
   useEffect(() => {
     async function loadData() {
@@ -103,14 +107,12 @@ export default function SendEmailPage() {
         ]);
         if (templatesRes.ok) {
           const data = await templatesRes.json();
-          const emailCategories = (data.categories || []).filter(
-            (category: { channel: string }) => category.channel === 'email',
+          const pushCategories = (data.categories || []).filter(
+            (c: { channel: string }) => c.channel === 'push',
           );
-          setAllTemplates(
-            (data.templates || []).filter((template: ApiTemplate) =>
-              emailCategories.some(
-                (category: { id: string | number }) => category.id === template.categoryId,
-              ),
+          setPushTemplates(
+            (data.templates || []).filter((t: ApiTemplate) =>
+              pushCategories.some((c: { id: string | number }) => c.id === t.categoryId),
             ),
           );
         }
@@ -118,7 +120,7 @@ export default function SendEmailPage() {
           const data = await membersRes.json();
           setMembers(
             data.map(
-              (member: {
+              (m: {
                 id: string;
                 name: string;
                 email: string;
@@ -126,30 +128,25 @@ export default function SendEmailPage() {
                 initials: string;
                 status: string;
               }) => ({
-                id: member.id,
-                name: member.name,
-                email: member.email,
-                company: member.companyName,
-                avatar: member.initials,
-                status: member.status,
+                id: m.id,
+                name: m.name,
+                email: m.email,
+                company: m.companyName,
+                avatar: m.initials,
+                status: m.status,
                 verified: ['aria-lindqvist', 'mateo-ferrari', 'sarah-jenkins', 'yuki-tanaka'].includes(
-                  member.id,
+                  m.id,
                 ),
               }),
             ),
           );
         }
       } catch (error) {
-        console.error('Failed to load send email data:', error);
+        console.error('Failed to load notification data:', error);
       }
     }
     loadData();
   }, []);
-
-  const filteredTemplates = useMemo(() => {
-    if (!typeId) return allTemplates;
-    return allTemplates.filter((t) => t.type === typeId || !t.type);
-  }, [allTemplates, typeId]);
 
   const selectedMembers = useMemo(
     () => members.filter((m) => recipientIds.includes(m.id)),
@@ -161,51 +158,35 @@ export default function SendEmailPage() {
       setTemplateId('');
       return;
     }
-    const tpl = allTemplates.find((t) => t.id === tplId);
+    const tpl = pushTemplates.find((t) => t.id === tplId);
     if (!tpl) return;
     setTemplateId(tplId);
-    setSubject(tpl.subject);
+    setTitle(tpl.subject || tpl.name);
     setMessage(tpl.body || tpl.content || '');
     toast.success(`Template applied: ${tpl.name}`);
   };
 
   const applyAudiencePreset = (preset: string) => {
     setAudiencePreset(preset);
-    if (preset === 'all') {
-      setRecipientIds(members.map((m) => m.id));
-    } else if (preset === 'active') {
+    if (preset === 'all') setRecipientIds(members.map((m) => m.id));
+    else if (preset === 'active')
       setRecipientIds(members.filter((m) => m.status === 'ACTIVE').map((m) => m.id));
-    } else if (preset === 'verified') {
+    else if (preset === 'verified')
       setRecipientIds(members.filter((m) => m.verified).map((m) => m.id));
-    } else {
-      setAudiencePreset('');
-    }
+    else setAudiencePreset('');
   };
 
   const toggleRecipient = (id: string) => {
     setAudiencePreset('');
-    setRecipientIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  };
-
-  const selectAllRecipients = () => {
-    setAudiencePreset('all');
-    setRecipientIds(members.map((m) => m.id));
-  };
-
-  const clearRecipients = () => {
-    setAudiencePreset('');
-    setRecipientIds([]);
+    setRecipientIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const insertVariable = (varId: string) => {
     const token = `{{${varId}}}`;
-    if (editorRef) {
-      editorRef.chain().focus().insertContent(token).run();
-    } else {
-      setMessage((prev) => prev + token);
-    }
+    setMessage((prev) => {
+      const next = prev + token;
+      return next.length > PUSH_CHAR_LIMIT ? next.slice(0, PUSH_CHAR_LIMIT) : next;
+    });
     setVarOpen(false);
   };
 
@@ -214,11 +195,11 @@ export default function SendEmailPage() {
       toast.error('Select at least one recipient');
       return false;
     }
-    if (!subject.trim()) {
-      toast.error('Subject is required');
+    if (!title.trim()) {
+      toast.error('Notification title is required');
       return false;
     }
-    if (!stripHtml(message)) {
+    if (!message.trim()) {
       toast.error('Message is required');
       return false;
     }
@@ -227,74 +208,73 @@ export default function SendEmailPage() {
 
   const saveDraft = async () => {
     if (!validateForm()) return;
-    await fetch('/api/send-email', {
+    await fetch('/api/send-notification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         recipientIds,
-        from: fromId,
-        type: typeId || 'marketing',
-        subject,
+        sender: senderId,
+        type: typeId || 'transactional',
+        title,
         body: message,
         status: 'DRAFT',
       }),
     });
-    toast.success('Draft saved', {
-      description: `${recipientIds.length} recipient(s) · ${subject}`,
-    });
+    toast.success('Draft saved', { description: `${recipientIds.length} device(s) · ${title}` });
   };
 
-  const sendEmail = async () => {
+  const sendNotification = async () => {
     if (!validateForm()) return;
     setIsSending(true);
     try {
-      await fetch('/api/send-email', {
+      await fetch('/api/send-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           recipientIds,
-          from: fromId,
-          type: typeId || 'marketing',
-          subject,
+          sender: senderId,
+          type: typeId || 'transactional',
+          title,
           body: message,
           status: 'QUEUED',
         }),
       });
-      toast.success('Bulk email queued', {
-        description: `${subject} → ${recipientIds.length} recipient(s)`,
+      toast.success('Push notifications queued', {
+        description: `${title} → ${recipientIds.length} recipient(s)`,
       });
       setRecipientIds([]);
       setAudiencePreset('');
-      setSubject('');
+      setTitle('');
       setMessage('');
       setTemplateId('');
       setTypeId('');
-    } catch (error) {
-      console.error('Failed to send email:', error);
-      toast.error('Failed to send email');
+    } catch {
+      toast.error('Failed to send notifications');
     } finally {
       setIsSending(false);
     }
   };
 
+  const charCount = message.length;
+
   return (
     <DashboardLayout>
-      <div data-testid="send-email-page" className="p-6 md:p-8 lg:p-10">
+      <div data-testid="send-notification-page" className="p-6 md:p-8 lg:p-10">
         <div className="mb-5">
           <Header
-            title="Send Email"
-            subtitle="Compose and send bulk notifications to multiple members at once."
+            title="Send Notification"
+            subtitle="Compose and deliver push alerts to members' phones — same workflow as bulk email."
           />
         </div>
 
         <div className="bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
           <div className="px-6 pt-6 pb-4 border-b border-slate-100">
             <h2 className="font-display text-lg font-semibold text-slate-900 tracking-tight flex items-center gap-2">
-              <Mail className="h-4 w-4 text-slate-500" />
-              Compose Bulk Email
+              <Bell className="h-4 w-4 text-slate-500" />
+              Compose Push Notification
             </h2>
             <p className="text-sm text-slate-500 mt-0.5">
-              Pick recipients, optionally apply a template, then write your message — same flow as the member email tab.
+              Pick recipients, load a push template, and send a short message to mobile devices.
             </p>
           </div>
 
@@ -321,24 +301,19 @@ export default function SendEmailPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Field label="Recipients" hint={`${recipientIds.length} selected for this send`}>
+              <Field label="Recipients" hint={`${recipientIds.length} selected`}>
                 <Popover open={recipientOpen} onOpenChange={setRecipientOpen}>
                   <PopoverTrigger asChild>
-                    <Button
-                      data-testid="bulk-recipient-trigger"
-                      variant="outline"
-                      role="combobox"
-                      className="h-10 justify-between font-normal w-full"
-                    >
+                    <Button variant="outline" role="combobox" className="h-10 justify-between font-normal w-full">
                       {recipientIds.length > 0 ? (
                         <span className="flex items-center gap-2 min-w-0 truncate">
                           <Users className="h-4 w-4 text-slate-400 shrink-0" />
-                          {recipientIds.length} recipient{recipientIds.length === 1 ? '' : 's'} selected
+                          {recipientIds.length} recipient{recipientIds.length === 1 ? '' : 's'}
                         </span>
                       ) : (
                         <span className="text-slate-500 flex items-center gap-2">
                           <Search className="h-3.5 w-3.5" />
-                          Search members to add…
+                          Search members…
                         </span>
                       )}
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-slate-400" />
@@ -346,19 +321,25 @@ export default function SendEmailPage() {
                   </PopoverTrigger>
                   <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                     <Command>
-                      <CommandInput placeholder="Search by name, email, company…" className="h-11" />
+                      <CommandInput placeholder="Search by name, email…" className="h-11" />
                       <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-slate-100">
                         <button
                           type="button"
-                          className="text-xs font-semibold text-slate-700 hover:text-slate-900"
-                          onClick={selectAllRecipients}
+                          className="text-xs font-semibold text-slate-700"
+                          onClick={() => {
+                            setAudiencePreset('all');
+                            setRecipientIds(members.map((m) => m.id));
+                          }}
                         >
                           Select all
                         </button>
                         <button
                           type="button"
-                          className="text-xs font-semibold text-slate-500 hover:text-slate-700"
-                          onClick={clearRecipients}
+                          className="text-xs font-semibold text-slate-500"
+                          onClick={() => {
+                            setAudiencePreset('');
+                            setRecipientIds([]);
+                          }}
                         >
                           Clear
                         </button>
@@ -366,28 +347,28 @@ export default function SendEmailPage() {
                       <CommandList className="max-h-[280px]">
                         <CommandEmpty>No members found.</CommandEmpty>
                         <CommandGroup heading="Members">
-                          {members.map((m) => {
-                            const checked = recipientIds.includes(m.id);
-                            return (
-                              <CommandItem
-                                key={m.id}
-                                value={`${m.name} ${m.email} ${m.company}`}
-                                onSelect={() => toggleRecipient(m.id)}
-                                className="flex items-center gap-3 py-2 cursor-pointer"
-                              >
-                                <div className="h-7 w-7 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-[10px] font-semibold border border-slate-200">
-                                  {m.avatar}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium truncate">{m.name}</div>
-                                  <div className="text-xs text-slate-500 truncate">{m.email}</div>
-                                </div>
-                                <Check
-                                  className={cn('h-4 w-4 shrink-0', checked ? 'opacity-100' : 'opacity-0')}
-                                />
-                              </CommandItem>
-                            );
-                          })}
+                          {members.map((m) => (
+                            <CommandItem
+                              key={m.id}
+                              value={`${m.name} ${m.email}`}
+                              onSelect={() => toggleRecipient(m.id)}
+                              className="flex items-center gap-3 py-2 cursor-pointer"
+                            >
+                              <div className="h-7 w-7 rounded-full bg-slate-100 text-[10px] font-semibold flex items-center justify-center border border-slate-200">
+                                {m.avatar}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium truncate">{m.name}</div>
+                                <div className="text-xs text-slate-500 truncate">{m.email}</div>
+                              </div>
+                              <Check
+                                className={cn(
+                                  'h-4 w-4',
+                                  recipientIds.includes(m.id) ? 'opacity-100' : 'opacity-0',
+                                )}
+                              />
+                            </CommandItem>
+                          ))}
                         </CommandGroup>
                       </CommandList>
                     </Command>
@@ -395,21 +376,17 @@ export default function SendEmailPage() {
                 </Popover>
               </Field>
 
-              <Field label="From">
-                <Select value={fromId} onValueChange={setFromId}>
-                  <SelectTrigger data-testid="from-select" className="h-10">
+              <Field label="Send From">
+                <Select value={senderId} onValueChange={setSenderId}>
+                  <SelectTrigger className="h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {FROM_EMAILS.map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{f.name}</span>
-                          <BadgeCheck
-                            className="h-3.5 w-3.5 shrink-0"
-                            style={{ color: 'white', fill: '#3b82f6' }}
-                          />
-                          <span className="text-xs text-slate-500 ml-1">{f.address}</span>
+                    {PUSH_SENDERS.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">{s.name}</span>
+                          <span className="text-xs text-slate-500">{s.subtitle}</span>
                         </div>
                       </SelectItem>
                     ))}
@@ -419,7 +396,7 @@ export default function SendEmailPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <Field label="Email Type">
+              <Field label="Notification Type">
                 <Select
                   value={typeId || 'none'}
                   onValueChange={(v) => {
@@ -427,7 +404,7 @@ export default function SendEmailPage() {
                     setTemplateId('');
                   }}
                 >
-                  <SelectTrigger data-testid="type-select" className="h-10">
+                  <SelectTrigger className="h-10">
                     <SelectValue placeholder="No type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -441,17 +418,17 @@ export default function SendEmailPage() {
                 </Select>
               </Field>
 
-              <Field label="Email Template">
+              <Field label="Push Template">
                 <Select
                   value={templateId || 'none'}
                   onValueChange={(v) => applyTemplate(v === 'none' ? '' : v)}
                 >
-                  <SelectTrigger data-testid="template-select" className="h-10">
+                  <SelectTrigger className="h-10">
                     <SelectValue placeholder="No template" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">No template</SelectItem>
-                    {filteredTemplates.map((t) => (
+                    {pushTemplates.map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.name}
                       </SelectItem>
@@ -461,19 +438,19 @@ export default function SendEmailPage() {
               </Field>
             </div>
 
-            <Field label="Subject">
+            <Field label="Title" hint="Shown on the lock screen and notification tray">
               <Input
-                data-testid="subject-input"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 className="h-10"
-                placeholder="What's this email about?"
+                placeholder="e.g. Your plan renews tomorrow"
                 disabled={isSending}
+                maxLength={80}
               />
             </Field>
 
-            <div className="flex flex-col gap-1.5 min-h-[320px]">
-              <div className="flex items-center justify-between shrink-0">
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
                 <Label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                   Message
                 </Label>
@@ -488,75 +465,91 @@ export default function SendEmailPage() {
                     <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 px-2 py-1.5">
                       Variables
                     </div>
-                    <div className="space-y-0.5">
-                      {EMAIL_VARIABLES.map((v) => (
-                        <button
-                          key={v.id}
-                          type="button"
-                          onClick={() => insertVariable(v.id)}
-                          className="w-full text-left px-2 py-1.5 rounded-md hover:bg-slate-100 transition-colors flex items-center justify-between text-sm"
-                        >
-                          <span className="text-slate-700">{v.label}</span>
-                          <span className="text-[10px] font-mono text-slate-400">{`{{${v.id}}}`}</span>
-                        </button>
-                      ))}
-                    </div>
+                    {EMAIL_VARIABLES.map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => insertVariable(v.id)}
+                        className="w-full text-left px-2 py-1.5 rounded-md hover:bg-slate-100 text-sm flex justify-between"
+                      >
+                        <span>{v.label}</span>
+                        <span className="text-[10px] font-mono text-slate-400">{`{{${v.id}}}`}</span>
+                      </button>
+                    ))}
                   </PopoverContent>
                 </Popover>
               </div>
-              <RichTextEditor
+              <Textarea
                 value={message}
-                onChange={setMessage}
-                placeholder="Type your message… use Insert Variable for dynamic fields."
-                onEditorReady={setEditorRef}
-                fillHeight
-                className="min-h-[280px]"
+                onChange={(e) => setMessage(e.target.value.slice(0, PUSH_CHAR_LIMIT))}
+                placeholder="Short message for mobile push…"
+                disabled={isSending}
+                rows={4}
+                className="resize-none text-sm min-h-[100px]"
               />
+              <p
+                className={cn(
+                  'text-xs text-right',
+                  charCount > PUSH_CHAR_LIMIT - 20 ? 'text-amber-600' : 'text-slate-500',
+                )}
+              >
+                {charCount}/{PUSH_CHAR_LIMIT} characters
+              </p>
             </div>
 
-            {selectedMembers.length > 0 && (
-              <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 mb-2">
-                  Sending to
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedMembers.slice(0, 8).map((m) => (
-                    <span
-                      key={m.id}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700"
-                    >
-                      <span className="h-5 w-5 rounded-full bg-slate-100 text-[9px] font-semibold flex items-center justify-center border border-slate-200">
-                        {m.avatar}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {selectedMembers.length > 0 && (
+                <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 mb-2">
+                    Sending to
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedMembers.slice(0, 6).map((m) => (
+                      <span
+                        key={m.id}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium"
+                      >
+                        {m.name}
                       </span>
-                      {m.name}
-                    </span>
-                  ))}
-                  {selectedMembers.length > 8 && (
-                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500">
-                      +{selectedMembers.length - 8} more
-                    </span>
-                  )}
+                    ))}
+                    {selectedMembers.length > 6 && (
+                      <span className="text-xs text-slate-500">+{selectedMembers.length - 6} more</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 flex gap-3">
+                <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
+                  <Smartphone className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">
+                    Preview
+                  </p>
+                  <p className="text-sm font-semibold text-slate-900 truncate">
+                    {title || 'Notification title'}
+                  </p>
+                  <p className="text-xs text-slate-600 mt-1 line-clamp-3">
+                    {message || 'Your message will appear here on member devices.'}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-2">
+                    {PUSH_SENDERS.find((s) => s.id === senderId)?.name ?? 'Northgate App'}
+                  </p>
                 </div>
               </div>
-            )}
+            </div>
           </div>
 
-          <div className="px-6 py-4 border-t border-slate-100 flex flex-wrap items-center justify-end gap-2">
-            <Button
-              data-testid="save-draft-btn"
-              variant="outline"
-              disabled={isSending}
-              onClick={saveDraft}
-              className="h-10"
-            >
+          <div className="px-6 py-4 border-t border-slate-100 flex flex-wrap justify-end gap-2">
+            <Button variant="outline" disabled={isSending} onClick={saveDraft} className="h-10">
               <Save className="h-4 w-4 mr-1.5" />
               Save Draft
             </Button>
             <Button
-              data-testid="send-email-btn"
               disabled={isSending}
-              onClick={sendEmail}
-              className="h-10 bg-slate-900 hover:bg-slate-800 text-white min-w-[120px]"
+              onClick={sendNotification}
+              className="h-10 bg-slate-900 hover:bg-slate-800 text-white min-w-[140px]"
             >
               {isSending ? (
                 <>
@@ -566,7 +559,7 @@ export default function SendEmailPage() {
               ) : (
                 <>
                   <Send className="h-4 w-4 mr-1.5" />
-                  Send Email
+                  Send Notification
                 </>
               )}
             </Button>

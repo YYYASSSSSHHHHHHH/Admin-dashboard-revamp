@@ -12,11 +12,12 @@ import {
   PlayCircle,
   FileText,
   Undo2,
-  ChevronDown,
-  ChevronUp,
   DollarSign,
   AlertTriangle,
+  Trash2,
+  Edit,
 } from 'lucide-react';
+import { InvoiceRowActionsMenu } from '@/components/dashboard/InvoiceRowActionsMenu';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,7 +49,7 @@ import {
   Plan,
 } from '@/lib/constants';
 import { cn } from '@/lib/utils';
-import { RECIPIENT_BANKS } from '@/lib/invoice-utils';
+import { RECIPIENT_BANKS, PAYMENT_MODES } from '@/lib/invoice-utils';
 import { toast } from 'sonner';
 
 const INVOICE_CHOICES = [
@@ -111,11 +112,19 @@ function formatTableDate(dateInput: string) {
   return `${day}-${months[parsed.getMonth()]}-${parsed.getFullYear()}`;
 }
 
-function invoiceStatusLabel(status: string) {
+type InvoiceDisplayStatus = 'Unpaid' | 'Paid' | 'Cancel';
+
+function invoiceStatusLabel(status: string): InvoiceDisplayStatus {
   const normalized = status.toLowerCase();
-  if (normalized === 'paid') return 'PAID';
-  if (normalized === 'pending' || normalized === 'unpaid' || normalized === 'overdue') return 'UNPAID';
-  return 'N/A';
+  if (normalized === 'paid') return 'Paid';
+  if (normalized === 'cancel' || normalized === 'cancelled') return 'Cancel';
+  return 'Unpaid';
+}
+
+function invoiceStatusToStored(status: InvoiceDisplayStatus): string {
+  if (status === 'Paid') return 'paid';
+  if (status === 'Cancel') return 'cancel';
+  return 'pending';
 }
 
 function formatInrAmount(amount: number) {
@@ -188,6 +197,18 @@ export function AssignPlanTab({
   // New states for toggling views and expanding invoice rows
   const [viewMode, setViewMode] = useState<'activity' | 'invoices'>('activity');
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
+
+  const [invoiceStatusOpen, setInvoiceStatusOpen] = useState(false);
+  const [invoiceActionTarget, setInvoiceActionTarget] = useState<Invoice | null>(null);
+  const [invoiceEditStatus, setInvoiceEditStatus] = useState<InvoiceDisplayStatus>('Unpaid');
+  const [invoicePayDate, setInvoicePayDate] = useState('');
+  const [invoicePayBank, setInvoicePayBank] = useState('');
+  const [invoicePayRef, setInvoicePayRef] = useState('');
+  const [invoicePayAmt, setInvoicePayAmt] = useState('');
+  const [invoicePayMode, setInvoicePayMode] = useState<(typeof PAYMENT_MODES)[number] | ''>('Bank Transfer');
+  const [invoicePayRemark, setInvoicePayRemark] = useState('');
+  const [invoiceDeleteOpen, setInvoiceDeleteOpen] = useState(false);
+  const [invoiceDeleting, setInvoiceDeleting] = useState<Invoice | null>(null);
 
   const openDialog = () => {
     setAction('assign');
@@ -398,6 +419,98 @@ export function AssignPlanTab({
     return [...events, ...invoiceEvents].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
   }, [timeline, invoices]);
 
+  const openInvoiceStatusEdit = (inv: Invoice) => {
+    setInvoiceActionTarget(inv);
+    const displayStatus = invoiceStatusLabel(inv.status);
+    setInvoiceEditStatus(displayStatus);
+    setInvoicePayDate(inv.paidOn ? formatTableDate(inv.paidOn) : '');
+    setInvoicePayBank(inv.bankName || RECIPIENT_BANKS[0] || '');
+    setInvoicePayRef(inv.bankRef || '');
+    setInvoicePayAmt(String(inv.amount ?? ''));
+    setInvoicePayMode('Bank Transfer');
+    setInvoicePayRemark(inv.bankRemark || '');
+    setInvoiceStatusOpen(true);
+  };
+
+  const handleInvoiceEditStatusChange = (stat: InvoiceDisplayStatus) => {
+    setInvoiceEditStatus(stat);
+    if (stat === 'Paid' && invoiceActionTarget) {
+      setInvoicePayAmt((prev) => prev || String(invoiceActionTarget.amount ?? ''));
+      setInvoicePayDate((prev) => prev || formatTableDate(new Date().toISOString()));
+      setInvoicePayBank((prev) => prev || RECIPIENT_BANKS[0]);
+      setInvoicePayMode((prev) => prev || 'Bank Transfer');
+    }
+  };
+
+  const invoiceSettlementActive = invoiceEditStatus === 'Paid';
+  const invoiceSettlementInputClass = cn(
+    'h-10 w-full text-sm border-slate-200',
+    invoiceSettlementActive ? 'bg-white' : 'bg-slate-100/80 text-slate-400 placeholder:text-slate-300',
+  );
+  const invoiceSettlementSelectClass = cn(
+    'h-10 w-full font-normal border-slate-200',
+    invoiceSettlementActive ? 'bg-white' : 'bg-slate-100/80 text-slate-400',
+  );
+
+  const handleInvoiceStatusSave = () => {
+    if (!invoiceActionTarget) return;
+    if (invoiceEditStatus === 'Paid') {
+      if (!invoicePayDate.trim() || !invoicePayAmt.trim() || !invoicePayBank.trim() || !invoicePayRef.trim()) {
+        toast.error('Payment date, amount, bank, and reference are required');
+        return;
+      }
+    }
+    const storedStatus = invoiceStatusToStored(invoiceEditStatus);
+    setInvoices((prev) =>
+      prev.map((inv) =>
+        inv.id === invoiceActionTarget.id
+          ? {
+              ...inv,
+              status: storedStatus,
+              paidOn: invoiceEditStatus === 'Paid' ? new Date().toISOString() : undefined,
+              bankName: invoiceEditStatus === 'Paid' ? invoicePayBank : undefined,
+              bankRef: invoiceEditStatus === 'Paid' ? invoicePayRef : undefined,
+              bankRemark: invoiceEditStatus === 'Paid' ? invoicePayRemark : undefined,
+            }
+          : inv,
+      ),
+    );
+    toast.success(
+      `Invoice ${invoiceActionTarget.invoiceNumber || invoiceActionTarget.id} status set to ${invoiceEditStatus}`,
+    );
+    setInvoiceStatusOpen(false);
+    setInvoiceActionTarget(null);
+  };
+
+  const handleInvoiceSendEmail = (inv: Invoice) => {
+    toast.success('Invoice email queued', {
+      description: `${inv.invoiceNumber || inv.id} → ${seed.email || 'member'}`,
+    });
+  };
+
+  const handleInvoiceDownloadPdf = (inv: Invoice) => {
+    const link = document.createElement('a');
+    link.href =
+      'data:text/plain;charset=utf-8,' +
+      encodeURIComponent(
+        `Invoice: ${inv.invoiceNumber || inv.id}\nAmount: ${formatInrAmount(inv.amount)}\nPlan: ${inv.planName || plan.name}`,
+      );
+    link.setAttribute('download', `${(inv.invoiceNumber || inv.id).replace(/\//g, '_')}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Invoice ${inv.invoiceNumber || inv.id} downloaded`);
+  };
+
+  const handleInvoiceDelete = () => {
+    if (!invoiceDeleting) return;
+    setInvoices((prev) => prev.filter((inv) => inv.id !== invoiceDeleting.id));
+    if (expandedInvoiceId === invoiceDeleting.id) setExpandedInvoiceId(null);
+    toast.success(`Invoice ${invoiceDeleting.invoiceNumber || invoiceDeleting.id} removed`);
+    setInvoiceDeleteOpen(false);
+    setInvoiceDeleting(null);
+  };
+
   const invoiceHistoryRows = useMemo(
     () =>
       invoices
@@ -560,15 +673,15 @@ export function AssignPlanTab({
             </table>
           ) : (
             <table className="w-full text-sm" data-testid="invoice-table">
-              <thead>
-                <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 border-b border-slate-100">
+              <thead className="bg-white border-b" style={{ borderColor: '#EEF2F6' }}>
+                <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                   <th className="px-6 py-3 w-16 text-center">SR NO</th>
                   <th className="px-6 py-3">Date</th>
                   <th className="px-6 py-3">Plan &amp; Validity</th>
                   <th className="px-6 py-3">Invoice</th>
                   <th className="px-6 py-3">Amount</th>
                   <th className="px-6 py-3">Status</th>
-                  <th className="px-4 py-3 text-center w-14">Action</th>
+                  <th className="px-4 py-3 text-center w-28">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -582,129 +695,95 @@ export function AssignPlanTab({
                   invoiceHistoryRows.map((row, index) => {
                     const inv = row.invoice;
                     const isExpanded = expandedInvoiceId === inv.id;
+                    const isPaid = row.status === 'Paid';
                     return (
                       <Fragment key={row.key}>
-                        <tr className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs font-semibold">
+                        <tr
+                          className="hover:bg-slate-50/40 bg-white border-b transition-colors cursor-pointer select-none"
+                          style={{ borderColor: '#F1F5F9' }}
+                          onClick={() =>
+                            setExpandedInvoiceId(isExpanded ? null : inv.id)
+                          }
+                        >
+                          <td className="px-6 py-4 text-center text-slate-400 font-mono text-xs font-semibold w-16">
                             {String(index + 1).padStart(2, '0')}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="font-semibold text-slate-900 text-[13px]">
-                              {formatTableDate(row.rowDate)}
+                          <td className="px-6 py-4 whitespace-nowrap text-[13px] text-slate-700 font-medium">
+                            {formatTableDate(row.rowDate)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="font-semibold text-slate-900 text-[13px]">{row.planName}</div>
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              {row.validityStart} to {row.validityEnd}
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="flex flex-col gap-0.5">
-                              <span className="font-semibold text-slate-900 text-[13px]">
-                                {row.planName}
-                              </span>
-                              <span className="text-xs text-slate-500">
-                                {row.validityStart} to {row.validityEnd}
-                              </span>
+                            <div className="font-semibold text-slate-900 text-[13px]">{row.invoiceNumber}</div>
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              {formatTableDate(row.invoiceDate)}
                             </div>
                           </td>
-                          <td className="px-6 py-4">
-                            <div className="flex flex-col gap-0.5">
-                              <span className="font-medium text-slate-900 text-[13px]">
-                                {row.invoiceNumber}
-                              </span>
-                              <span className="text-xs text-slate-500">
-                                {formatTableDate(row.invoiceDate)}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900 text-[13px]">
+                          <td className="px-6 py-4 whitespace-nowrap text-[13px] font-medium text-slate-800">
                             {formatInrAmount(row.amount)}
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-6 py-4 w-28">
                             <StatusBadge status={row.status} />
                           </td>
-                          <td className="px-4 py-4 text-center">
-                            <button
-                              type="button"
-                              className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700"
-                              onClick={() =>
-                                setExpandedInvoiceId(isExpanded ? null : inv.id)
-                              }
-                              aria-label={isExpanded ? 'Collapse settlement' : 'Expand settlement'}
-                            >
-                              {isExpanded ? (
-                                <ChevronUp className="h-3.5 w-3.5" />
-                              ) : (
-                                <ChevronDown className="h-3.5 w-3.5" />
-                              )}
-                            </button>
+                          <td
+                            className="px-4 py-4 text-center w-28"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <InvoiceRowActionsMenu
+                              testIdPrefix={`member-invoice-${inv.id}`}
+                              onUpdateStatus={() => openInvoiceStatusEdit(inv)}
+                              onSendEmail={() => handleInvoiceSendEmail(inv)}
+                              onDownloadPdf={() => handleInvoiceDownloadPdf(inv)}
+                              onDelete={() => {
+                                setInvoiceDeleting(inv);
+                                setInvoiceDeleteOpen(true);
+                              }}
+                            />
                           </td>
                         </tr>
                         {isExpanded && (
-                          <tr className="bg-slate-50/50">
-                            <td colSpan={7} className="px-4 py-2 border-b border-slate-100">
-                              <div className="rounded-lg border border-blue-200/80 bg-blue-50/40 px-3 py-2">
-                                <div className="flex items-center justify-between gap-2 mb-1.5">
-                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border bg-blue-50 text-blue-700 border-blue-200">
-                                    <DollarSign className="h-3 w-3" />
-                                    Invoice Settlement
-                                  </span>
-                                  <span className="text-[10px] font-semibold text-blue-700/90 truncate">
-                                    {inv.invoiceNumber || inv.id}
-                                  </span>
+                          <tr className="bg-slate-50/30">
+                            <td colSpan={7} className="px-6 py-4 border-b" style={{ borderColor: '#EEF2F6' }}>
+                              <div className="p-4 rounded-lg bg-blue-50/40 border border-blue-100 max-w-4xl">
+                                <h4 className="text-[10px] font-bold uppercase tracking-wider text-blue-700 mb-3 flex items-center gap-1.5">
+                                  <DollarSign className="h-3.5 w-3.5" />
+                                  Invoice Settlement
+                                </h4>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 text-xs">
+                                  {[
+                                    {
+                                      label: 'Settlement Date',
+                                      value: isPaid && inv.paidOn ? formatTableDate(inv.paidOn) : '—',
+                                    },
+                                    {
+                                      label: 'Amount Paid',
+                                      value: isPaid ? formatInrAmount(row.amount) : '—',
+                                    },
+                                    {
+                                      label: 'Recipient Bank',
+                                      value: isPaid ? inv.bankName || '—' : '—',
+                                    },
+                                    {
+                                      label: 'Payment Mode',
+                                      value: isPaid ? 'Bank Transfer' : '—',
+                                    },
+                                    {
+                                      label: 'Reference',
+                                      value: isPaid ? inv.bankRef || '—' : '—',
+                                    },
+                                  ].map((field) => (
+                                    <div key={field.label}>
+                                      <div className="text-[9px] font-bold uppercase tracking-wide text-slate-500 mb-0.5">
+                                        {field.label}
+                                      </div>
+                                      <div className="font-semibold text-slate-800">{field.value}</div>
+                                    </div>
+                                  ))}
                                 </div>
-
-                                {inv.status !== 'paid' ? (
-                                  <p className="text-xs text-slate-600 leading-snug flex items-center gap-1.5 py-1">
-                                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                                    No transaction audit ledger for this unpaid or draft invoice.
-                                  </p>
-                                ) : (
-                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                                    {[
-                                      {
-                                        label: 'Settlement Date',
-                                        value: inv.paidOn ? formatTableDate(inv.paidOn) : '—',
-                                        valueClass: 'text-slate-900',
-                                      },
-                                      {
-                                        label: 'Amount Paid',
-                                        value: formatInrAmount(inv.amount),
-                                        valueClass: 'text-emerald-700',
-                                      },
-                                      {
-                                        label: 'Recipient Bank',
-                                        value: inv.bankName || '—',
-                                        valueClass: 'text-slate-900',
-                                      },
-                                      {
-                                        label: 'Reference Number',
-                                        value: inv.bankRef || '—',
-                                        valueClass: 'text-slate-900 font-mono',
-                                      },
-                                    ].map((item) => (
-                                      <div
-                                        key={item.label}
-                                        className="rounded-md bg-white border border-blue-100/80 px-2 py-1.5 min-w-0"
-                                      >
-                                        <div className="text-[9px] font-bold text-blue-600 uppercase tracking-wide truncate">
-                                          {item.label}
-                                        </div>
-                                        <div
-                                          className={`text-xs font-semibold mt-0.5 truncate ${item.valueClass}`}
-                                        >
-                                          {item.value}
-                                        </div>
-                                      </div>
-                                    ))}
-                                    {inv.bankRemark && (
-                                      <div className="col-span-2 sm:col-span-4 rounded-md bg-white border border-blue-100/80 px-2 py-1.5">
-                                        <div className="text-[9px] font-bold text-blue-600 uppercase tracking-wide">
-                                          Remark
-                                        </div>
-                                        <div className="text-xs text-slate-700 mt-0.5 line-clamp-2">
-                                          {inv.bankRemark}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
                               </div>
                             </td>
                           </tr>
@@ -718,6 +797,185 @@ export function AssignPlanTab({
           )}
         </div>
       </div>
+
+      <Dialog open={invoiceStatusOpen} onOpenChange={setInvoiceStatusOpen}>
+        <DialogContent className="sm:max-w-2xl bg-white border border-slate-250 p-6 shadow-xl rounded-xl z-[100] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Edit className="h-5 w-5 text-slate-500" />
+              Update Payment Status
+            </DialogTitle>
+            <DialogDescription className="text-slate-550 text-xs">
+              Modify transaction payment details and complete bank settlement audits.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-5 py-2">
+            <div className="space-y-2">
+              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Select Status
+              </Label>
+              <div className="flex items-center gap-6">
+                {(['Unpaid', 'Paid', 'Cancel'] as const).map((stat) => (
+                  <label
+                    key={stat}
+                    className="flex items-center gap-2 text-xs font-semibold text-slate-800 cursor-pointer select-none"
+                  >
+                    <input
+                      type="radio"
+                      name="member-invoice-status"
+                      checked={invoiceEditStatus === stat}
+                      onChange={() => handleInvoiceEditStatusChange(stat)}
+                      className="h-4 w-4 accent-slate-900 cursor-pointer"
+                    />
+                    {stat}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div
+              className={cn(
+                'pt-4 border-t border-dashed border-slate-200 space-y-4 min-h-[248px]',
+                !invoiceSettlementActive && 'opacity-90',
+              )}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Bank Settlement Audit Variables
+                </h4>
+                {!invoiceSettlementActive && (
+                  <span className="text-[10px] font-medium text-slate-400 italic">
+                    Available when status is Paid
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Payment Date
+                  </Label>
+                  <Input
+                    placeholder="e.g. 24-Apr-2026"
+                    value={invoiceSettlementActive ? invoicePayDate : ''}
+                    onChange={(e) => setInvoicePayDate(e.target.value)}
+                    disabled={!invoiceSettlementActive}
+                    className={invoiceSettlementInputClass}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Amount Paid
+                  </Label>
+                  <Input
+                    placeholder="e.g. ₹ 5,000"
+                    value={invoiceSettlementActive ? invoicePayAmt : ''}
+                    onChange={(e) => setInvoicePayAmt(e.target.value)}
+                    disabled={!invoiceSettlementActive}
+                    className={cn(invoiceSettlementInputClass, 'font-mono')}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Bank Name
+                  </Label>
+                  <Select
+                    value={invoiceSettlementActive ? invoicePayBank || undefined : undefined}
+                    onValueChange={setInvoicePayBank}
+                    disabled={!invoiceSettlementActive}
+                  >
+                    <SelectTrigger className={invoiceSettlementSelectClass}>
+                      <SelectValue placeholder="Select bank" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {RECIPIENT_BANKS.map((bank) => (
+                        <SelectItem key={bank} value={bank}>
+                          {bank}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Reference No.
+                  </Label>
+                  <Input
+                    placeholder="UTR / Txn ID"
+                    value={invoiceSettlementActive ? invoicePayRef : ''}
+                    onChange={(e) => setInvoicePayRef(e.target.value)}
+                    disabled={!invoiceSettlementActive}
+                    className={cn(invoiceSettlementInputClass, 'font-mono')}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <Label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Payment Mode
+                  </Label>
+                  <Select
+                    value={invoiceSettlementActive ? invoicePayMode || undefined : undefined}
+                    onValueChange={(val) => setInvoicePayMode(val as (typeof PAYMENT_MODES)[number])}
+                    disabled={!invoiceSettlementActive}
+                  >
+                    <SelectTrigger className={invoiceSettlementSelectClass}>
+                      <SelectValue placeholder="Select payment mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_MODES.map((mode) => (
+                        <SelectItem key={mode} value={mode}>
+                          {mode}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="pt-4 border-t border-slate-100 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setInvoiceStatusOpen(false)}
+              className="h-10 text-xs font-semibold hover:bg-slate-50 cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleInvoiceStatusSave}
+              className="h-10 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white cursor-pointer"
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={invoiceDeleteOpen} onOpenChange={setInvoiceDeleteOpen}>
+        <DialogContent className="sm:max-w-md bg-white border border-slate-250 p-6 shadow-xl rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="font-display text-base font-bold text-slate-900 flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-500" />
+              Delete Invoice
+            </DialogTitle>
+            <DialogDescription className="text-slate-550 text-xs">
+              Remove {invoiceDeleting?.invoiceNumber || invoiceDeleting?.id} from this member&apos;s history?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setInvoiceDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleInvoiceDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent data-testid="assign-action-dialog" className="max-w-3xl h-[690px] max-h-[90vh] flex flex-col justify-between overflow-hidden p-0">

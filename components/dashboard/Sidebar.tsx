@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -12,6 +13,7 @@ import {
   FileText,
   MessageSquare,
   Send,
+  Bell,
   Radio,
   ClipboardList,
   Phone,
@@ -19,7 +21,6 @@ import {
   Settings as SettingsIcon,
   Sliders,
   FileCode,
-  Sparkles,
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
@@ -41,6 +42,13 @@ export function Sidebar() {
       setActiveRoute(pathname);
       if (pathname === '/plans' || pathname === '/membership-label' || pathname === '/invoices') {
         setOpenSections((prev) => ({ ...prev, billing: true }));
+      }
+      if (
+        pathname === '/send-email' ||
+        pathname === '/send-notification' ||
+        pathname === '/broadcast-history'
+      ) {
+        setOpenSections((prev) => ({ ...prev, communication: true }));
       }
       if (pathname === '/call-request' || pathname === '/contact-request') {
         setOpenSections((prev) => ({ ...prev, request: true }));
@@ -72,7 +80,11 @@ export function Sidebar() {
       return activeRoute === '/plans' || activeRoute === '/membership-label' || activeRoute === '/invoices';
     }
     if (section === 'communication') {
-      return activeRoute === '/send-email' || activeRoute === '/broadcast-history';
+      return (
+        activeRoute === '/send-email' ||
+        activeRoute === '/send-notification' ||
+        activeRoute === '/broadcast-history'
+      );
     }
     if (section === 'request') {
       return activeRoute === '/call-request' || activeRoute === '/contact-request';
@@ -106,16 +118,22 @@ export function Sidebar() {
       className="hidden lg:flex w-[240px] shrink-0 h-screen sticky top-0 flex-col bg-white border-r border-slate-200"
     >
       <div className="px-5 py-6 border-b border-slate-100">
-        <div className="flex items-center gap-2.5">
-          <div className="h-9 w-9 rounded-xl bg-slate-900 text-white flex items-center justify-center">
-            <Sparkles className="h-4.5 w-4.5" />
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 shrink-0">
+            <Image
+              src="/Frame 282.svg"
+              alt="TradeKomp Logo"
+              width={48}
+              height={48}
+              className="w-full h-full"
+            />
           </div>
           <div>
-            <div className="font-display font-semibold text-slate-900 leading-tight">
-              Northgate
+            <div className="font-display font-bold text-slate-900 leading-tight text-lg">
+              tradekomp
             </div>
             <div className="text-[11px] text-slate-500 leading-tight">
-              Marketplace Admin
+              Admin Panel
             </div>
           </div>
         </div>
@@ -217,7 +235,7 @@ export function Sidebar() {
           </button>
 
           <div
-            className={`pl-1 space-y-0.5 overflow-hidden transition-all duration-350 ease-in-out ${openSections.communication ? 'max-h-40 py-1 opacity-100' : 'max-h-0 py-0 opacity-0 pointer-events-none'
+            className={`pl-1 space-y-0.5 overflow-hidden transition-all duration-350 ease-in-out ${openSections.communication ? 'max-h-52 py-1 opacity-100' : 'max-h-0 py-0 opacity-0 pointer-events-none'
               }`}
           >
             <Link
@@ -229,6 +247,16 @@ export function Sidebar() {
               <span className={getDotClass('/send-email')}></span>
               <Send className="h-4 w-4 shrink-0 text-slate-500" />
               <span>Email</span>
+            </Link>
+            <Link
+              href="/send-notification"
+              onClick={() => handleSubLinkClick('/send-notification')}
+              className={getSubLinkClass('/send-notification')}
+              data-testid="sub-send-notification"
+            >
+              <span className={getDotClass('/send-notification')}></span>
+              <Bell className="h-4 w-4 shrink-0 text-slate-500" />
+              <span>Notifications</span>
             </Link>
             <Link
               href="/broadcast-history"

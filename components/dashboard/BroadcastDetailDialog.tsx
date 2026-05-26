@@ -348,7 +348,7 @@ export function BroadcastDetailDialog({
                   <Label className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 leading-none">
                     Message
                   </Label>
-                  <div className="h-20 rounded-lg border border-slate-200 bg-slate-50/60 overflow-hidden">
+                  <div className="h-20 rounded-lg border border-slate-200 bg-white overflow-hidden">
                     {mode === 'view' ? (
                       <div className="h-full overflow-y-auto px-3.5 py-2.5 text-sm text-slate-900">
                         {form.message}

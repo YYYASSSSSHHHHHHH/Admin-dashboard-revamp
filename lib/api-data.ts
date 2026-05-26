@@ -90,21 +90,6 @@ export const plans: MembershipPlanCatalog[] = [
       ...DEFAULT_PLAN_PERMISSIONS.map((p) => ({ ...p, type: 'yes' as const })),
     ],
   },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: 249,
-    billing: 'monthly',
-    validity: '1 Year',
-    status: 'Inactive',
-    dailyBroadcast: '100',
-    dailyDirectEmail: '50',
-    features: [
-      { key: 'Daily Broadcast', type: 'value', value: '100' },
-      { key: 'Daily Direct Email', type: 'value', value: '50' },
-      ...DEFAULT_PLAN_PERMISSIONS.map((p) => ({ ...p, type: 'yes' as const })),
-    ],
-  },
 ];
 
 export const broadcasts = [

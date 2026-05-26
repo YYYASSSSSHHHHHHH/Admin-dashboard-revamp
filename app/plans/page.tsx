@@ -1,13 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import Link from 'next/link';
 import {
-  ChevronDown,
   Check,
   X,
   Pencil,
-  ArrowUpRight,
   Users,
   Edit2,
   Shield,
@@ -325,30 +322,40 @@ function EditPlanDialog({ plan, open, onOpenChange, onSave }: EditPlanDialogProp
 
 interface PlanCardProps {
   plan: MembershipPlanCatalog;
-  members: { id: string; name: string; initials?: string; status?: string }[];
   accent: (typeof ACCENTS)['starter'];
+  expanded: boolean;
+  onToggle: () => void;
   onEdit: () => void;
 }
 
-function PlanCard({ plan, members, accent, onEdit }: PlanCardProps) {
-  const [expanded, setExpanded] = useState(false);
-  const activeOnPlan = members.filter((m) => m.status?.toLowerCase() === 'active');
-  const mrr = activeOnPlan.reduce((s) => s + plan.price, 0);
+function PlanCard({ plan, accent, expanded, onToggle, onEdit }: PlanCardProps) {
   const isFree = plan.price <= 0;
 
   return (
     <div
       data-testid={`plan-card-${plan.id}`}
-      className={`relative bg-white border ${accent.border} rounded-xl p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col`}
+      role="button"
+      tabIndex={0}
+      onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+      aria-expanded={expanded}
+      className={`relative bg-white border ${accent.border} rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col cursor-pointer select-none ${
+        expanded ? 'ring-1 ring-slate-200' : ''
+      }`}
     >
-      <div className={`absolute -top-px left-6 right-6 h-0.5 ${accent.bar} rounded-full`} />
+      <div className={`absolute -top-px left-4 right-4 h-0.5 ${accent.bar} rounded-full`} />
 
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between mb-2">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
             Plan
           </div>
-          <div className="font-display text-2xl font-semibold tracking-tight text-slate-900 mt-1">
+          <div className="font-display text-xl font-semibold tracking-tight text-slate-900 mt-0.5">
             {plan.name}
           </div>
           <div className="text-xs font-semibold text-slate-600 mt-0.5">{plan.status}</div>
@@ -361,7 +368,10 @@ function PlanCard({ plan, members, accent, onEdit }: PlanCardProps) {
           </div>
           <button
             type="button"
-            onClick={onEdit}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}
             data-testid={`plan-edit-${plan.id}`}
             className="h-7 w-7 rounded-md border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors"
             aria-label={`Edit ${plan.name}`}
@@ -371,114 +381,46 @@ function PlanCard({ plan, members, accent, onEdit }: PlanCardProps) {
         </div>
       </div>
 
-      <div className="flex items-baseline gap-1 mb-1">
+      <div className="flex items-baseline gap-1">
         {isFree ? (
-          <span className="font-display text-4xl font-semibold tracking-tight text-slate-900">
+          <span className="font-display text-3xl font-semibold tracking-tight text-slate-900">
             Free
           </span>
         ) : (
           <>
-            <span className="font-display text-4xl font-semibold tracking-tight text-slate-900">
+            <span className="font-display text-3xl font-semibold tracking-tight text-slate-900">
               ${plan.price}
             </span>
             <span className="text-sm text-slate-500">/{plan.billing.slice(0, -2)}</span>
           </>
         )}
       </div>
-      <p className="text-sm text-slate-500 mb-5">{plan.validity}</p>
+      <p className="text-sm text-slate-500 mt-0.5">{plan.validity}</p>
 
-      <div
-        className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
-          expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-        }`}
-      >
-        <div className="overflow-hidden min-h-0">
-          <ul className="space-y-2.5 mb-6">
-            <li className="grid grid-cols-2 gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 pb-1">
-              <span>Features</span>
-              <span className="text-right">Included</span>
-            </li>
-            {plan.features.map((feat) => (
-              <li key={feat.key} className="flex items-start justify-between gap-2 text-sm text-slate-700">
-                <span>{feat.key}</span>
-                <span className="shrink-0 flex items-center">
-                  {feat.type === 'value' ? (
-                    <span className="font-medium text-slate-900">{feat.value}</span>
-                  ) : feat.type === 'yes' ? (
-                    <Check className={`h-4 w-4 ${accent.check}`} aria-label="Included" />
-                  ) : (
-                    <X className="h-4 w-4 text-slate-400" aria-label="Not included" />
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      <div className="flex justify-end -mt-2 mb-4">
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          data-testid={`plan-expand-${plan.id}`}
-          className="h-8 w-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors"
-          aria-expanded={expanded}
-          aria-label={expanded ? 'Collapse plan details' : 'Expand plan details'}
+      {expanded && (
+        <ul
+          className="space-y-2 pt-3 mt-2 border-t border-slate-100"
+          onClick={(e) => e.stopPropagation()}
         >
-          <ChevronDown
-            className={`h-4 w-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
-          />
-        </button>
-      </div>
-
-      <div className="mt-auto pt-5 border-t border-dashed border-slate-200 grid grid-cols-2 gap-3">
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Members
-          </div>
-          <div className="font-display text-lg font-semibold text-slate-900 mt-0.5">
-            {members.length}
-          </div>
-          <div className="text-xs text-slate-500">{activeOnPlan.length} active</div>
-        </div>
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-            MRR
-          </div>
-          <div className="font-display text-lg font-semibold text-slate-900 mt-0.5">
-            ${mrr.toLocaleString()}
-          </div>
-          <div className="text-xs text-slate-500">from this plan</div>
-        </div>
-      </div>
-
-      {members.length > 0 && (
-        <div className="mt-5 flex items-center gap-2">
-          <div className="flex -space-x-2">
-            {members.slice(0, 4).map((m) => (
-              <div
-                key={m.id}
-                className="h-7 w-7 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-[10px] font-semibold border-2 border-white"
-                title={m.name}
-              >
-                {m.initials}
-              </div>
-            ))}
-            {members.length > 4 && (
-              <div className="h-7 w-7 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-semibold border-2 border-white">
-                +{members.length - 4}
-              </div>
-            )}
-          </div>
-          <Link
-            href="/members"
-            data-testid={`plan-view-members-${plan.id}`}
-            className="ml-auto text-xs font-medium text-slate-700 hover:text-slate-900 inline-flex items-center gap-1 transition-colors"
-          >
-            View
-            <ArrowUpRight className="h-3 w-3" />
-          </Link>
-        </div>
+          <li className="grid grid-cols-2 gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 pb-1">
+            <span>Features</span>
+            <span className="text-right">Included</span>
+          </li>
+          {plan.features.map((feat) => (
+            <li key={feat.key} className="flex items-start justify-between gap-2 text-sm text-slate-700">
+              <span>{feat.key}</span>
+              <span className="shrink-0 flex items-center">
+                {feat.type === 'value' ? (
+                  <span className="font-medium text-slate-900">{feat.value}</span>
+                ) : feat.type === 'yes' ? (
+                  <Check className={`h-4 w-4 ${accent.check}`} aria-label="Included" />
+                ) : (
+                  <X className="h-4 w-4 text-slate-400" aria-label="Not included" />
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -490,6 +432,7 @@ export default function MembershipPlans() {
   const [loading, setLoading] = useState(true);
   const [editingPlan, setEditingPlan] = useState<MembershipPlanCatalog | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -571,22 +514,22 @@ export default function MembershipPlans() {
             <p className="text-slate-500 font-medium animate-pulse">Loading plans data...</p>
           </div>
         ) : (
-          <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-            {plans.map((plan) => {
-              const planMembers = members.filter((m) => isMemberOnPlan(m, plan));
-              return (
-                <PlanCard
-                  key={plan.id}
-                  plan={plan}
-                  members={planMembers as { id: string; name: string; initials?: string; status?: string }[]}
-                  accent={ACCENTS[plan.id] || ACCENTS.starter}
-                  onEdit={() => {
-                    setEditingPlan(plan);
-                    setEditOpen(true);
-                  }}
-                />
-              );
-            })}
+          <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 items-start">
+            {plans.map((plan) => (
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                accent={ACCENTS[plan.id] || ACCENTS.starter}
+                expanded={expandedPlanId === plan.id}
+                onToggle={() =>
+                  setExpandedPlanId((current) => (current === plan.id ? null : plan.id))
+                }
+                onEdit={() => {
+                  setEditingPlan(plan);
+                  setEditOpen(true);
+                }}
+              />
+            ))}
           </section>
         )}
       </div>

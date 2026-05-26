@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   Users as UsersIcon,
   Wallet,
+  ScanSearch,
 } from 'lucide-react';
 import {
   Tabs,
@@ -37,6 +38,7 @@ import { BroadcastTab } from '@/components/dashboard/BroadcastTab';
 import { BroadcastSettings } from '@/components/dashboard/BroadcastSettings';
 import { LoginLogTab } from '@/components/dashboard/LoginLogTab';
 import { StampTab } from '@/components/dashboard/StampTab';
+import { AccountMatchTab } from '@/components/dashboard/AccountMatchTab';
 import { formatDate, relativeTime } from '@/lib/constants';
 
 interface Member {
@@ -370,6 +372,14 @@ export function MemberDetail({ defaultTab = 'company' }: { defaultTab?: string }
               Assign Plan
             </TabsTrigger>
             <TabsTrigger
+              value="account-match"
+              data-testid="tab-account-match"
+              className="h-9 px-4 data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 rounded-md transition-all flex items-center cursor-pointer"
+            >
+              <ScanSearch className="h-3.5 w-3.5 mr-2 text-red-600" />
+              Account Match
+            </TabsTrigger>
+            <TabsTrigger
               value="email"
               data-testid="tab-email"
               className="h-9 px-4 data-[state=active]:bg-slate-900 data-[state=active]:text-white text-slate-600 rounded-md transition-all flex items-center cursor-pointer"
@@ -461,6 +471,17 @@ export function MemberDetail({ defaultTab = 'company' }: { defaultTab?: string }
 
           <TabsContent value="stamp" className="mt-0 focus-visible:outline-none">
             <StampTab stamps={stamps} setStamps={handleStampsChange} />
+          </TabsContent>
+
+          <TabsContent value="account-match" className="mt-0 focus-visible:outline-none">
+            <AccountMatchTab 
+              member={seed}
+              companyName={companyName}
+              city={city}
+              firstName={contacts[0]?.firstName || ''}
+              lastName={contacts[0]?.lastName || ''}
+              mobile={companyDetails?.contactNo1 || contacts[0]?.mobile || ''}
+            />
           </TabsContent>
         </Tabs>
       </div>
