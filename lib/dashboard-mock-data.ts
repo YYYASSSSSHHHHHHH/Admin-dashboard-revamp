@@ -12,6 +12,7 @@ export const MEMBERS = apiMembers.map((member) => ({
   company: member.companyName,
   avatar: member.initials,
   verified: ['aria-lindqvist', 'mateo-ferrari', 'sarah-jenkins', 'yuki-tanaka'].includes(member.id),
+  status: member.status,
 }));
 
 export const FROM_EMAILS = [
