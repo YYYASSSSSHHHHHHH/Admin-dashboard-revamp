@@ -53,9 +53,8 @@ import { RECIPIENT_BANKS, PAYMENT_MODES } from '@/lib/invoice-utils';
 import { toast } from 'sonner';
 
 const INVOICE_CHOICES = [
-  { id: 'none', label: 'No Invoice', description: 'Apply the action only', cls: 'bg-slate-100 text-slate-700 border-slate-200' },
-  { id: 'proforma', label: 'Proforma', description: 'Preliminary, not payable', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
-  { id: 'final', label: 'Final Invoice', description: 'Real invoice + bank details', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+  { id: 'proforma', label: 'Proforma', description: 'Preliminary invoice, not payable', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  { id: 'final', label: 'Final Invoice', description: 'Real invoice with bank details (required)', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
 ];
 
 interface FieldProps {
@@ -101,6 +100,11 @@ interface Invoice {
   bankRef?: string;
   bankRemark?: string;
   paidOn?: string;
+  // Proforma to Final linking
+  proformaId?: string;
+  proformaNumber?: string;
+  proformaDate?: string;
+  linkedFinalId?: string;
 }
 
 function formatTableDate(dateInput: string) {
@@ -209,6 +213,16 @@ export function AssignPlanTab({
   const [invoicePayRemark, setInvoicePayRemark] = useState('');
   const [invoiceDeleteOpen, setInvoiceDeleteOpen] = useState(false);
   const [invoiceDeleting, setInvoiceDeleting] = useState<Invoice | null>(null);
+  
+  // Convert Proforma to Final invoice state
+  const [convertToFinalOpen, setConvertToFinalOpen] = useState(false);
+  const [convertingProforma, setConvertingProforma] = useState<Invoice | null>(null);
+  const [convertBankDate, setConvertBankDate] = useState<Date>(new Date());
+  const [convertBankName, setConvertBankName] = useState('');
+  const [convertBankRef, setConvertBankRef] = useState('');
+  const [convertBankAmount, setConvertBankAmount] = useState('');
+  const [convertPayMode, setConvertPayMode] = useState<(typeof PAYMENT_MODES)[number] | ''>('Bank Transfer');
+  const [convertBankRemark, setConvertBankRemark] = useState('');
 
   const openDialog = () => {
     setAction('assign');
@@ -222,7 +236,10 @@ export function AssignPlanTab({
     setReasonId('policy_violation');
     setReasonOther('');
     setNote('');
-    setInvoiceChoice('none');
+    // Default to proforma for non-free plans
+    const selectedPlan = PLANS.find((p) => p.id === plan.id) || plan;
+    const isFreeP = selectedPlan.price === 0;
+    setInvoiceChoice(isFreeP ? '' : 'proforma');
     setBankDate(today);
     setBankName('');
     setBankRef('');
@@ -314,33 +331,38 @@ export function AssignPlanTab({
       });
     }
 
-    if (invoiceApplicable && invoiceChoice !== 'none') {
+    if (invoiceApplicable && invoiceChoice !== '' && invoiceChoice !== 'none') {
       const isFinal = invoiceChoice === 'final';
-      const shouldRecordPayment = isFinal && markPaid;
-      if (shouldRecordPayment) {
+      // For Final invoice, bank details are ALWAYS required
+      if (isFinal) {
         if (!bankName.trim() || !bankRef.trim() || !bankAmount.trim()) {
-          toast.error('Please fill all bank details');
+          toast.error('Bank details are mandatory for Final invoice');
           return;
         }
       }
+      // Check if this is a free plan - no invoices allowed
+      if (newPlan.price === 0) {
+        toast.error('Free plans cannot generate invoices');
+        return;
+      }
       const prefix = isFinal ? 'INV' : 'PRO';
       const invoiceId = `${prefix}-${Math.floor(Math.random() * 9000) + 3000}`;
-      const amount = shouldRecordPayment ? parseFloat(bankAmount) || newPlan.price : newPlan.price;
+      const amount = isFinal ? parseFloat(bankAmount) || newPlan.price : newPlan.price;
       newInvoice = {
         id: invoiceId,
         invoiceNumber: invoiceId,
         amount,
         type: isFinal ? 'final' : 'proforma',
-        status: isFinal ? (shouldRecordPayment ? 'paid' : 'pending') : 'draft',
+        status: isFinal ? 'paid' : 'draft',
         issuedAt: nowIso,
         dueDate: addDaysIso(nowIso, 14),
         planName: newPlan.name,
         validityStart: formatTableDate(startDate.toISOString()),
         validityEnd: formatTableDate(newExpiry),
-        bankName: shouldRecordPayment ? bankName : undefined,
-        bankRef: shouldRecordPayment ? bankRef : undefined,
-        bankRemark: shouldRecordPayment ? bankRemark : undefined,
-        paidOn: shouldRecordPayment ? bankDate.toISOString() : undefined,
+        bankName: isFinal ? bankName : undefined,
+        bankRef: isFinal ? bankRef : undefined,
+        bankRemark: isFinal ? bankRemark : undefined,
+        paidOn: isFinal ? bankDate.toISOString() : undefined,
       };
       events.push({
         id: Date.now() + 1,
@@ -350,7 +372,7 @@ export function AssignPlanTab({
         at: nowIso,
         actor: 'Olivia Chen',
       });
-      if (shouldRecordPayment) {
+      if (isFinal) {
         events.push({
           id: Date.now() + 2,
           type: 'payment_received',
@@ -511,24 +533,144 @@ export function AssignPlanTab({
     setInvoiceDeleting(null);
   };
 
-  const invoiceHistoryRows = useMemo(
-    () =>
-      invoices
-        .map((inv) => ({
+  const openConvertToFinal = (proforma: Invoice) => {
+    setConvertingProforma(proforma);
+    setConvertBankDate(new Date());
+    setConvertBankName('');
+    setConvertBankRef('');
+    setConvertBankAmount(String(proforma.amount ?? ''));
+    setConvertPayMode('Bank Transfer');
+    setConvertBankRemark('');
+    setConvertToFinalOpen(true);
+  };
+
+  const handleConvertToFinal = () => {
+    if (!convertingProforma) return;
+    if (!convertBankName.trim() || !convertBankRef.trim() || !convertBankAmount.trim()) {
+      toast.error('All bank details are required to generate Final invoice');
+      return;
+    }
+    const nowIso = new Date().toISOString();
+    const finalInvoiceId = `INV-${Math.floor(Math.random() * 9000) + 3000}`;
+    const amount = parseFloat(convertBankAmount) || convertingProforma.amount;
+    
+    // Create new Final invoice linked to the Proforma
+    const finalInvoice: Invoice = {
+      id: finalInvoiceId,
+      invoiceNumber: finalInvoiceId,
+      amount,
+      type: 'final',
+      status: 'paid',
+      issuedAt: nowIso,
+      dueDate: convertingProforma.dueDate,
+      planName: convertingProforma.planName,
+      validityStart: convertingProforma.validityStart,
+      validityEnd: convertingProforma.validityEnd,
+      bankName: convertBankName,
+      bankRef: convertBankRef,
+      bankRemark: convertBankRemark,
+      paidOn: convertBankDate.toISOString(),
+      proformaId: convertingProforma.id,
+      proformaNumber: convertingProforma.invoiceNumber || convertingProforma.id,
+      proformaDate: convertingProforma.issuedAt,
+    };
+
+    // Update the Proforma to link to Final
+    setInvoices((prev) => {
+      const updated = prev.map((inv) =>
+        inv.id === convertingProforma.id
+          ? { ...inv, linkedFinalId: finalInvoiceId, status: 'converted' }
+          : inv
+      );
+      return [finalInvoice, ...updated];
+    });
+
+    // Add timeline events
+    setTimeline((prev) => [
+      {
+        id: Date.now() + 2,
+        type: 'payment_received',
+        title: 'Payment received',
+        description: `${finalInvoiceId} · ${convertBankName} · Ref ${convertBankRef} · $${amount.toFixed(2)}`,
+        at: nowIso,
+        actor: 'Olivia Chen',
+      },
+      {
+        id: Date.now() + 1,
+        type: 'invoice_generated',
+        title: 'Final invoice generated',
+        description: `${finalInvoiceId} converted from ${convertingProforma.invoiceNumber || convertingProforma.id}`,
+        at: nowIso,
+        actor: 'Olivia Chen',
+      },
+      ...prev,
+    ]);
+
+    toast.success(`Final invoice ${finalInvoiceId} generated`, {
+      description: `Converted from Proforma ${convertingProforma.invoiceNumber || convertingProforma.id}`,
+    });
+    setConvertToFinalOpen(false);
+    setConvertingProforma(null);
+  };
+
+  const invoiceHistoryRows = useMemo(() => {
+    // Group invoices: Final invoices with their linked Proformas
+    // Proformas without linked Final invoices appear as standalone rows
+    const finalInvoices = invoices.filter((inv) => inv.type === 'final');
+    const standaloneProformas = invoices.filter(
+      (inv) => inv.type === 'proforma' && !inv.linkedFinalId
+    );
+
+    const rows = [
+      ...finalInvoices.map((inv) => {
+        // Find the linked Proforma if it exists
+        const linkedProforma = inv.proformaId
+          ? invoices.find((p) => p.id === inv.proformaId)
+          : null;
+        return {
           key: inv.id,
           rowDate: inv.issuedAt,
           planName: inv.planName || plan.name,
           validityStart: inv.validityStart || formatTableDate(inv.issuedAt),
           validityEnd: inv.validityEnd || expiry || '—',
+          // Proforma column
+          proformaNumber: linkedProforma?.invoiceNumber || inv.proformaNumber || null,
+          proformaDate: linkedProforma?.issuedAt || inv.proformaDate || null,
+          // Final invoice column
           invoiceNumber: inv.invoiceNumber || inv.id,
           invoiceDate: inv.issuedAt,
           amount: inv.amount,
-          status: invoiceStatusLabel(inv.status),
+          status: 'Paid' as const,
           invoice: inv,
-        }))
-        .sort((a, b) => new Date(b.rowDate).getTime() - new Date(a.rowDate).getTime()),
-    [invoices, plan.name, expiry],
-  );
+          proformaInvoice: linkedProforma || null,
+          isFree: false,
+        };
+      }),
+      ...standaloneProformas.map((inv) => ({
+        key: inv.id,
+        rowDate: inv.issuedAt,
+        planName: inv.planName || plan.name,
+        validityStart: inv.validityStart || formatTableDate(inv.issuedAt),
+        validityEnd: inv.validityEnd || expiry || '—',
+        // Proforma column
+        proformaNumber: inv.invoiceNumber || inv.id,
+        proformaDate: inv.issuedAt,
+        // Final invoice column (pending)
+        invoiceNumber: null,
+        invoiceDate: null,
+        amount: inv.amount,
+        status: 'Pending Activation' as const,
+        invoice: inv,
+        proformaInvoice: inv,
+        isFree: false,
+      })),
+    ];
+
+    // Also show free plan assignments (no invoices)
+    // These would come from timeline events but we'll skip for now
+
+    return rows.sort((a, b) => new Date(b.rowDate).getTime() - new Date(a.rowDate).getTime());
+  }, [invoices, plan.name, expiry]);
 
   return (
     <div className="space-y-5" data-testid="assign-plan-tab">
@@ -678,6 +820,7 @@ export function AssignPlanTab({
                   <th className="px-6 py-3 w-16 text-center">SR NO</th>
                   <th className="px-6 py-3">Date</th>
                   <th className="px-6 py-3">Plan &amp; Validity</th>
+                  <th className="px-6 py-3">Proforma</th>
                   <th className="px-6 py-3">Invoice</th>
                   <th className="px-6 py-3">Amount</th>
                   <th className="px-6 py-3">Status</th>
@@ -687,7 +830,7 @@ export function AssignPlanTab({
               <tbody className="divide-y divide-slate-100">
                 {invoiceHistoryRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-500">
+                    <td colSpan={8} className="px-6 py-12 text-center text-sm text-slate-500">
                       No invoices found.
                     </td>
                   </tr>
@@ -696,6 +839,8 @@ export function AssignPlanTab({
                     const inv = row.invoice;
                     const isExpanded = expandedInvoiceId === inv.id;
                     const isPaid = row.status === 'Paid';
+                    const isPendingActivation = row.status === 'Pending Activation';
+                    const isProformaOnly = row.proformaNumber && !row.invoiceNumber;
                     return (
                       <Fragment key={row.key}>
                         <tr
@@ -717,37 +862,73 @@ export function AssignPlanTab({
                               {row.validityStart} to {row.validityEnd}
                             </div>
                           </td>
+                          {/* Proforma Column */}
                           <td className="px-6 py-4">
-                            <div className="font-semibold text-slate-900 text-[13px]">{row.invoiceNumber}</div>
-                            <div className="text-xs text-slate-500 mt-0.5">
-                              {formatTableDate(row.invoiceDate)}
-                            </div>
+                            {row.proformaNumber ? (
+                              <>
+                                <div className="font-semibold text-amber-700 text-[13px]">{row.proformaNumber}</div>
+                                <div className="text-xs text-slate-500 mt-0.5">
+                                  {formatTableDate(row.proformaDate)}
+                                </div>
+                              </>
+                            ) : (
+                              <span className="text-slate-400 text-xs">—</span>
+                            )}
+                          </td>
+                          {/* Invoice (Final) Column */}
+                          <td className="px-6 py-4">
+                            {row.invoiceNumber ? (
+                              <>
+                                <div className="font-semibold text-slate-900 text-[13px]">{row.invoiceNumber}</div>
+                                <div className="text-xs text-slate-500 mt-0.5">
+                                  {formatTableDate(row.invoiceDate)}
+                                </div>
+                              </>
+                            ) : (
+                              <span className="text-amber-600 text-xs font-medium">Pending</span>
+                            )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-[13px] font-medium text-slate-800">
-                            {formatInrAmount(row.amount)}
+                            {row.isFree ? 'Free' : formatInrAmount(row.amount)}
                           </td>
-                          <td className="px-6 py-4 w-28">
-                            <StatusBadge status={row.status} />
+                          <td className="px-6 py-4 w-32">
+                            {isPendingActivation ? (
+                              <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+                                Pending Activation
+                              </span>
+                            ) : (
+                              <StatusBadge status={row.status} />
+                            )}
                           </td>
                           <td
                             className="px-4 py-4 text-center w-28"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <InvoiceRowActionsMenu
-                              testIdPrefix={`member-invoice-${inv.id}`}
-                              onUpdateStatus={() => openInvoiceStatusEdit(inv)}
-                              onSendEmail={() => handleInvoiceSendEmail(inv)}
-                              onDownloadPdf={() => handleInvoiceDownloadPdf(inv)}
-                              onDelete={() => {
-                                setInvoiceDeleting(inv);
-                                setInvoiceDeleteOpen(true);
-                              }}
-                            />
+                            {isProformaOnly ? (
+                              <Button
+                                size="sm"
+                                className="h-8 px-3 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white"
+                                onClick={() => openConvertToFinal(inv)}
+                              >
+                                Convert to Final
+                              </Button>
+                            ) : (
+                              <InvoiceRowActionsMenu
+                                testIdPrefix={`member-invoice-${inv.id}`}
+                                onUpdateStatus={() => openInvoiceStatusEdit(inv)}
+                                onSendEmail={() => handleInvoiceSendEmail(inv)}
+                                onDownloadPdf={() => handleInvoiceDownloadPdf(inv)}
+                                onDelete={() => {
+                                  setInvoiceDeleting(inv);
+                                  setInvoiceDeleteOpen(true);
+                                }}
+                              />
+                            )}
                           </td>
                         </tr>
                         {isExpanded && (
                           <tr className="bg-slate-50/30">
-                            <td colSpan={7} className="px-6 py-4 border-b" style={{ borderColor: '#EEF2F6' }}>
+                            <td colSpan={8} className="px-6 py-4 border-b" style={{ borderColor: '#EEF2F6' }}>
                               <div className="p-4 rounded-lg bg-blue-50/40 border border-blue-100 max-w-4xl">
                                 <h4 className="text-[10px] font-bold uppercase tracking-wider text-blue-700 mb-3 flex items-center gap-1.5">
                                   <DollarSign className="h-3.5 w-3.5" />
@@ -1148,145 +1329,132 @@ export function AssignPlanTab({
               </div>
             )}
 
-            {invoiceApplicable && (
-              <div className="pt-4 border-t border-dashed border-slate-200">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 mb-3">
-                  Invoice
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {INVOICE_CHOICES.map((c) => (
-                    <button
-                      type="button"
-                      key={c.id}
-                      data-testid={`invoice-choice-${c.id}`}
-                      onClick={() => setInvoiceChoice(c.id)}
-                      className={`text-left p-3 rounded-lg border-2 transition-all ${invoiceChoice === c.id
-                          ? 'border-slate-900 bg-slate-50'
-                          : 'border-slate-200 hover:border-slate-300'
-                        }`}
-                    >
-                      <div
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border mb-2 ${c.cls}`}
-                      >
-                        {c.label}
+            {invoiceApplicable && (() => {
+              const selectedPlan = PLANS.find((p) => p.id === planId) || plan;
+              const isFreePlan = selectedPlan.price === 0;
+              
+              if (isFreePlan) {
+                return (
+                  <div className="pt-4 border-t border-dashed border-slate-200">
+                    <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
+                      <div className="flex items-center gap-2 text-slate-600">
+                        <AlertTriangle className="h-4 w-4 text-slate-400" />
+                        <span className="text-sm font-medium">Free plans cannot generate invoices</span>
                       </div>
-                      <div className="text-xs text-slate-600">{c.description}</div>
-                    </button>
-                  ))}
-                </div>
+                      <p className="text-xs text-slate-500 mt-1 ml-6">
+                        No Proforma or Final invoice will be created for this plan assignment.
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+              
+              return (
+                <div className="pt-4 border-t border-dashed border-slate-200">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 mb-3">
+                    Invoice
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {INVOICE_CHOICES.map((c) => (
+                      <button
+                        type="button"
+                        key={c.id}
+                        data-testid={`invoice-choice-${c.id}`}
+                        onClick={() => setInvoiceChoice(c.id)}
+                        className={`text-left p-3 rounded-lg border-2 transition-all ${invoiceChoice === c.id
+                            ? 'border-slate-900 bg-slate-50'
+                            : 'border-slate-200 hover:border-slate-300'
+                          }`}
+                      >
+                        <div
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border mb-2 ${c.cls}`}
+                        >
+                          {c.label}
+                        </div>
+                        <div className="text-xs text-slate-600">{c.description}</div>
+                      </button>
+                    ))}
+                  </div>
 
-                {invoiceChoice === 'final' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-6 mt-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                      <Label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
-                        Payment Status
-                      </Label>
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="paymentStatus"
-                            checked={!markPaid}
-                            onChange={() => setMarkPaid(false)}
-                            className="h-4 w-4 accent-slate-900"
-                            data-testid="radio-unpaid"
+                  {invoiceChoice === 'final' && (
+                    <div className="mt-4 p-4 rounded-lg bg-blue-50/40 border border-blue-100 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700 mb-3 flex items-center gap-1.5">
+                        <CreditCard className="h-3.5 w-3.5" />
+                        Bank Details (Required for Final Invoice)
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Field label="Payment Date">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                data-testid="bank-date-trigger"
+                                variant="outline"
+                                className="h-10 w-full justify-start font-normal bg-white text-left"
+                              >
+                                <CalendarIcon className="h-4 w-4 mr-2 text-slate-500" />
+                                {formatDate(bankDate.toISOString())}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={bankDate}
+                                onSelect={(d) => d && setBankDate(d)}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </Field>
+                        <Field label="Bank Name *">
+                          <Select value={bankName || undefined} onValueChange={setBankName}>
+                            <SelectTrigger data-testid="bank-name" className="h-10 bg-white">
+                              <SelectValue placeholder="Select bank" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {RECIPIENT_BANKS.map((bank) => (
+                                <SelectItem key={bank} value={bank}>
+                                  {bank}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                        <Field label="Reference No. *">
+                          <Input
+                            data-testid="bank-ref"
+                            value={bankRef}
+                            onChange={(e) => setBankRef(e.target.value)}
+                            className="h-10 bg-white"
+                            placeholder="UTR / Txn ID"
                           />
-                          Unpaid
-                        </label>
-                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="paymentStatus"
-                            checked={markPaid}
-                            onChange={() => setMarkPaid(true)}
-                            className="h-4 w-4 accent-slate-900"
-                            data-testid="radio-paid"
+                        </Field>
+                        <Field label="Amount *">
+                          <Input
+                            data-testid="bank-amount"
+                            type="number"
+                            value={bankAmount}
+                            onChange={(e) => setBankAmount(e.target.value)}
+                            className="h-10 bg-white"
                           />
-                          Mark as Paid
-                        </label>
+                        </Field>
+                        <div className="md:col-span-2">
+                          <Field label="Remark (optional)">
+                            <Textarea
+                              data-testid="bank-remark"
+                              value={bankRemark}
+                              onChange={(e) => setBankRemark(e.target.value)}
+                              rows={2}
+                              className="resize-none bg-white"
+                              placeholder="Any note for the ledger…"
+                            />
+                          </Field>
+                        </div>
                       </div>
                     </div>
-
-                    {markPaid && (
-                      <div className="p-4 rounded-lg bg-blue-50/40 border border-blue-100 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700 mb-3 flex items-center gap-1.5">
-                          <CreditCard className="h-3.5 w-3.5" />
-                          Bank Details · Mark as Paid
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <Field label="Payment Date">
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  data-testid="bank-date-trigger"
-                                  variant="outline"
-                                  className="h-10 w-full justify-start font-normal bg-white text-left"
-                                >
-                                  <CalendarIcon className="h-4 w-4 mr-2 text-slate-500" />
-                                  {formatDate(bankDate.toISOString())}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={bankDate}
-                                  onSelect={(d) => d && setBankDate(d)}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          </Field>
-                          <Field label="Bank Name">
-                            <Select value={bankName || undefined} onValueChange={setBankName}>
-                              <SelectTrigger data-testid="bank-name" className="h-10 bg-white">
-                                <SelectValue placeholder="Select bank" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {RECIPIENT_BANKS.map((bank) => (
-                                  <SelectItem key={bank} value={bank}>
-                                    {bank}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </Field>
-                          <Field label="Reference No.">
-                            <Input
-                              data-testid="bank-ref"
-                              value={bankRef}
-                              onChange={(e) => setBankRef(e.target.value)}
-                              className="h-10 bg-white"
-                              placeholder="UTR / Txn ID"
-                            />
-                          </Field>
-                          <Field label="Amount">
-                            <Input
-                              data-testid="bank-amount"
-                              type="number"
-                              value={bankAmount}
-                              onChange={(e) => setBankAmount(e.target.value)}
-                              className="h-10 bg-white"
-                            />
-                          </Field>
-                          <div className="md:col-span-2">
-                            <Field label="Remark (optional)">
-                              <Textarea
-                                data-testid="bank-remark"
-                                value={bankRemark}
-                                onChange={(e) => setBankRemark(e.target.value)}
-                                rows={2}
-                                className="resize-none bg-white"
-                                placeholder="Any note for the ledger…"
-                              />
-                            </Field>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           <DialogFooter className="pb-6 px-6 pt-4 border-t border-slate-100 mt-4 gap-2 sm:space-x-0">
@@ -1302,7 +1470,127 @@ export function AssignPlanTab({
               onClick={handleConfirm}
               className="bg-slate-900 hover:bg-slate-800 text-white"
             >
-              {invoiceChoice === 'final' && markPaid ? 'Confirm & Mark as Paid' : 'Confirm'}
+              {invoiceChoice === 'final' ? 'Confirm & Generate Invoice' : 'Confirm'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Convert Proforma to Final Invoice Dialog */}
+      <Dialog open={convertToFinalOpen} onOpenChange={setConvertToFinalOpen}>
+        <DialogContent className="sm:max-w-xl bg-white border border-slate-250 p-6 shadow-xl rounded-xl z-[100] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-lg font-bold text-slate-900 flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              Convert to Final Invoice
+            </DialogTitle>
+            <DialogDescription className="text-slate-550 text-xs">
+              Enter bank details to generate the Final invoice from Proforma{' '}
+              <span className="font-semibold text-amber-700">
+                {convertingProforma?.invoiceNumber || convertingProforma?.id}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-amber-700 font-medium">Proforma Amount:</span>
+                <span className="font-semibold text-amber-800">
+                  {convertingProforma ? formatInrAmount(convertingProforma.amount) : '—'}
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Field label="Payment Date *">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="h-10 w-full justify-start font-normal bg-white text-left"
+                    >
+                      <CalendarIcon className="h-4 w-4 mr-2 text-slate-500" />
+                      {formatDate(convertBankDate.toISOString())}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={convertBankDate}
+                      onSelect={(d) => d && setConvertBankDate(d)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </Field>
+              <Field label="Bank Name *">
+                <Select value={convertBankName || undefined} onValueChange={setConvertBankName}>
+                  <SelectTrigger className="h-10 bg-white">
+                    <SelectValue placeholder="Select bank" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {RECIPIENT_BANKS.map((bank) => (
+                      <SelectItem key={bank} value={bank}>
+                        {bank}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Reference No. *">
+                <Input
+                  value={convertBankRef}
+                  onChange={(e) => setConvertBankRef(e.target.value)}
+                  className="h-10 bg-white"
+                  placeholder="UTR / Txn ID"
+                />
+              </Field>
+              <Field label="Amount *">
+                <Input
+                  type="number"
+                  value={convertBankAmount}
+                  onChange={(e) => setConvertBankAmount(e.target.value)}
+                  className="h-10 bg-white"
+                />
+              </Field>
+              <Field label="Payment Mode">
+                <Select
+                  value={convertPayMode || undefined}
+                  onValueChange={(val) => setConvertPayMode(val as (typeof PAYMENT_MODES)[number])}
+                >
+                  <SelectTrigger className="h-10 bg-white">
+                    <SelectValue placeholder="Select mode" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_MODES.map((mode) => (
+                      <SelectItem key={mode} value={mode}>
+                        {mode}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <div className="md:col-span-2">
+                <Field label="Remark (optional)">
+                  <Textarea
+                    value={convertBankRemark}
+                    onChange={(e) => setConvertBankRemark(e.target.value)}
+                    rows={2}
+                    className="resize-none bg-white"
+                    placeholder="Any note for the ledger…"
+                  />
+                </Field>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConvertToFinalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConvertToFinal}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Generate Final Invoice
             </Button>
           </DialogFooter>
         </DialogContent>

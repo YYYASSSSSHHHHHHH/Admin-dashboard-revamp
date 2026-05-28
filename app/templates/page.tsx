@@ -310,173 +310,190 @@ export default function TemplatesPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-6 md:p-8 lg:p-10 flex flex-col gap-6" data-testid="templates-page">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <Header
-            title="Templates"
-            subtitle="Manage email and push notification layouts used across Communication."
-          />
-          <Button
-            onClick={() => openTemplateModal()}
-            disabled={!selectedCategoryId}
-            className="h-10 bg-slate-900 hover:bg-slate-800 text-white shrink-0"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Template
-          </Button>
+      <div className="flex flex-col h-screen" data-testid="templates-page">
+        {/* Header Section */}
+        <div className="flex-shrink-0 bg-white border-b border-slate-200/80">
+          <div className="px-6 md:px-8 lg:px-10 py-6 md:py-7">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 md:gap-6">
+              <div>
+                <Header
+                  title="Templates"
+                  subtitle="Manage email and push notification layouts used across Communication."
+                />
+              </div>
+              <Button
+                onClick={() => openTemplateModal()}
+                disabled={!selectedCategoryId}
+                className="h-10 bg-slate-900 hover:bg-slate-800 text-white shrink-0 w-full sm:w-auto"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Template
+              </Button>
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-5 items-start">
-          <aside className="w-full lg:w-72 shrink-0 bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-slate-100">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 mb-2">
+        {/* Main Content */}
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col lg:flex-row gap-0">
+          {/* Sidebar */}
+          <aside className="w-full lg:w-72 lg:border-r border-slate-200/80 bg-white overflow-hidden flex flex-col">
+            {/* Channel Selector */}
+            <div className="flex-shrink-0 px-6 py-4 border-b border-slate-200/80">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-3">
                 Channel
               </p>
-              <div className="flex items-center bg-slate-100/80 p-1 rounded-lg border border-slate-200/60">
+              <div className="flex items-center bg-slate-100/80 p-1 rounded-lg border border-slate-200/60 gap-1">
                 <button
                   type="button"
                   onClick={() => handleChannelTabChange('email')}
                   className={cn(
-                    'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer',
+                    'flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all cursor-pointer',
                     channelFilter === 'email'
-                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
-                      : 'text-slate-500 hover:text-slate-800',
+                      ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
+                      : 'text-slate-500 hover:text-slate-700',
                   )}
                 >
-                  <Mail className="h-3.5 w-3.5" />
+                  <Mail className="h-4 w-4" />
                   Email
                 </button>
                 <button
                   type="button"
                   onClick={() => handleChannelTabChange('push')}
                   className={cn(
-                    'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer',
+                    'flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all cursor-pointer',
                     channelFilter === 'push'
-                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
-                      : 'text-slate-500 hover:text-slate-800',
+                      ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
+                      : 'text-slate-500 hover:text-slate-700',
                   )}
                 >
-                  <Bell className="h-3.5 w-3.5" />
+                  <Bell className="h-4 w-4" />
                   Push
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            {/* Categories Header */}
+            <div className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-slate-200/80">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Categories
               </span>
               <button
                 type="button"
                 onClick={() => openCategoryModal()}
-                className="text-xs font-semibold text-slate-700 hover:text-slate-900 flex items-center gap-1 cursor-pointer"
+                className="text-xs font-semibold text-slate-700 hover:text-slate-900 flex items-center gap-1.5 cursor-pointer transition-colors"
               >
-                <FolderPlus className="h-3.5 w-3.5" />
+                <FolderPlus className="h-4 w-4" />
                 Add
               </button>
             </div>
 
-            <div className="p-2 flex flex-col gap-0.5 max-h-[420px] overflow-y-auto">
+            {/* Categories List */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-3">
               {filteredCategories.length === 0 ? (
                 <p className="text-center py-8 text-sm text-slate-500">No categories yet.</p>
               ) : (
-                filteredCategories.map((cat) => {
-                  const isActive = selectedCategoryId === cat.id;
-                  return (
-                    <div
-                      key={cat.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => {
-                        setSelectedCategoryId(cat.id);
-                        setSearchTerm('');
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
+                <div className="space-y-1">
+                  {filteredCategories.map((cat) => {
+                    const isActive = selectedCategoryId === cat.id;
+                    return (
+                      <div
+                        key={cat.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
                           setSelectedCategoryId(cat.id);
                           setSearchTerm('');
-                        }
-                      }}
-                      className={cn(
-                        'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-sm transition-all cursor-pointer group border',
-                        isActive
-                          ? 'bg-slate-100 border-slate-200 text-slate-950 font-semibold'
-                          : 'bg-white border-transparent text-slate-600 hover:bg-slate-50 font-medium',
-                      )}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span
-                          className={cn(
-                            'w-1.5 h-1.5 rounded-full shrink-0',
-                            cat.status === 'active' ? 'bg-emerald-500' : 'bg-slate-400',
-                          )}
-                        />
-                        <span className="truncate">{cat.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <div className="hidden group-hover:flex items-center gap-0.5">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openCategoryModal(cat);
-                            }}
-                            className="p-1 rounded hover:bg-slate-200 text-slate-500"
-                          >
-                            <Edit2 className="h-3 w-3" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteCategory(cat.id, e)}
-                            className="p-1 rounded hover:bg-red-50 text-red-500"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelectedCategoryId(cat.id);
+                            setSearchTerm('');
+                          }
+                        }}
+                        className={cn(
+                          'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-sm transition-all cursor-pointer group',
+                          isActive
+                            ? 'bg-slate-100 text-slate-950 font-semibold'
+                            : 'bg-transparent text-slate-600 hover:bg-slate-50 font-medium',
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            className={cn(
+                              'w-2 h-2 rounded-full shrink-0 transition-colors',
+                              cat.status === 'active' ? 'bg-emerald-500' : 'bg-slate-300',
+                            )}
+                          />
+                          <span className="truncate text-sm">{cat.name}</span>
                         </div>
-                        <span
-                          className={cn(
-                            'px-1.5 py-0.5 rounded text-[10px] font-semibold',
-                            isActive ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-600',
-                          )}
-                        >
-                          {categoryTemplateCounts[cat.id] || 0}
-                        </span>
+                        <div className="flex items-center gap-1 shrink-0 ml-2">
+                          <div className="hidden group-hover:flex items-center gap-0.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openCategoryModal(cat);
+                              }}
+                              className="p-1.5 rounded-md hover:bg-slate-200 text-slate-500 transition-colors"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteCategory(cat.id, e)}
+                              className="p-1.5 rounded-md hover:bg-red-100 text-red-500 transition-colors"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <span
+                            className={cn(
+                              'px-2 py-0.5 rounded text-xs font-semibold min-w-max',
+                              isActive ? 'bg-slate-200 text-slate-700' : 'bg-slate-100 text-slate-600',
+                            )}
+                          >
+                            {categoryTemplateCounts[cat.id] || 0}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                </div>
               )}
             </div>
           </aside>
 
-          <div className="flex-1 min-w-0 bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Main Content Area */}
+          <div className="flex-1 min-w-0 min-h-0 bg-white flex flex-col">
+            {/* Table Header */}
+            <div className="flex-shrink-0 px-6 py-4 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h2 className="font-display text-lg font-semibold text-slate-900 tracking-tight">
+                <h2 className="text-base font-semibold text-slate-900">
                   {selectedCategory?.name || 'Templates'}
                 </h2>
-                <p className="text-sm text-slate-500 mt-0.5">
+                <p className="text-sm text-slate-500 mt-1">
                   {channelTemplates.length} {channelFilter} template
                   {channelTemplates.length === 1 ? '' : 's'} · {filteredTemplates.length} in this category
                 </p>
               </div>
-              <div className="w-full sm:w-72">
+              <div className="w-full sm:w-64 flex-shrink-0">
                 <SearchBar placeholder="Search templates…" onSearch={setSearchTerm} />
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Table */}
+            <div className="flex-1 min-h-0 overflow-x-auto">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 border-b border-slate-100">
-                    <th className="px-6 py-3 w-14 text-center">Sr No</th>
-                    <th className="px-6 py-3">Template Name</th>
-                    <th className="px-6 py-3">
+                <thead className="sticky top-0 bg-slate-50">
+                  <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-600 border-b border-slate-200/80">
+                    <th className="px-6 py-3.5 w-14 text-center font-semibold">No.</th>
+                    <th className="px-6 py-3.5 font-semibold">Template Name</th>
+                    <th className="px-6 py-3.5 font-semibold">
                       {channelFilter === 'email' ? 'Subject' : 'Title'}
                     </th>
-                    <th className="px-6 py-3">Type</th>
-                    <th className="px-6 py-3 text-right w-24">Actions</th>
+                    <th className="px-6 py-3.5 font-semibold">Type</th>
+                    <th className="px-6 py-3.5 text-right w-20 font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -488,35 +505,35 @@ export default function TemplatesPage() {
                     </tr>
                   ) : (
                     filteredTemplates.map((temp, index) => (
-                      <tr key={temp.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="px-6 py-3.5 text-center text-slate-400 font-mono text-xs">
+                      <tr key={temp.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-3 text-center text-slate-500 font-mono text-xs">
                           {String(index + 1).padStart(2, '0')}
                         </td>
-                        <td className="px-6 py-3.5 font-medium text-slate-900">{temp.name}</td>
-                        <td className="px-6 py-3.5 text-slate-600 max-w-xs truncate">
+                        <td className="px-6 py-3 font-medium text-slate-900">{temp.name}</td>
+                        <td className="px-6 py-3 text-slate-600 max-w-xs truncate text-sm">
                           {temp.subject || '—'}
                         </td>
-                        <td className="px-6 py-3.5">
+                        <td className="px-6 py-3">
                           <span
                             className={cn(
-                              'inline-flex px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border',
+                              'inline-flex px-2.5 py-1 rounded-md text-xs font-semibold',
                               temp.type === 'Transactional'
-                                ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                : 'bg-violet-50 text-violet-700 border-violet-200',
+                                ? 'bg-blue-50 text-blue-700'
+                                : 'bg-violet-50 text-violet-700',
                             )}
                           >
                             {temp.type}
                           </span>
                         </td>
-                        <td className="px-6 py-3.5 text-right">
+                        <td className="px-6 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8"
+                              className="h-8 w-8 hover:bg-slate-100"
                               onClick={() => openTemplateModal(temp)}
                             >
-                              <Edit2 className="h-3.5 w-3.5 text-slate-500" />
+                              <Edit2 className="h-4 w-4 text-slate-500" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -524,7 +541,7 @@ export default function TemplatesPage() {
                               className="h-8 w-8 hover:bg-red-50"
                               onClick={() => handleDeleteTemplate(temp.id)}
                             >
-                              <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                              <Trash2 className="h-4 w-4 text-red-500" />
                             </Button>
                           </div>
                         </td>
