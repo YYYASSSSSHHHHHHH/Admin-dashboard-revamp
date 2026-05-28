@@ -77,29 +77,29 @@ interface KpiCardProps {
 
 function KpiCard({ label, value, icon: Icon, iconBg, iconColor, trend, subtitle }: KpiCardProps) {
   return (
-    <Card className="overflow-hidden border-slate-200/60 shadow-sm hover:shadow-md hover:border-slate-300/80 transition-all duration-200 py-0">
+    <Card className="overflow-hidden border-border/40 bg-white/70 backdrop-blur-sm shadow-sm hover:shadow-md hover:border-border transition-all duration-300 py-0">
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 mb-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground mb-2">
               {label}
             </p>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold tracking-tight text-slate-900">
+              <span className="text-3xl font-bold tracking-tight text-foreground">
                 {typeof value === 'number' ? value.toLocaleString() : value}
               </span>
               {trend && (
-                <span className={`inline-flex items-center text-xs font-medium ${trend.isUp ? 'text-emerald-600' : 'text-red-500'}`}>
+                <span className={`inline-flex items-center text-xs font-semibold ${trend.isUp ? 'text-green-600' : 'text-red-500'}`}>
                   {trend.isUp ? <TrendingUp className="h-3 w-3 mr-0.5" /> : <TrendingDown className="h-3 w-3 mr-0.5" />}
                   {trend.value}%
                 </span>
               )}
             </div>
             {subtitle && (
-              <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>
+              <p className="text-[11px] text-muted-foreground mt-1">{subtitle}</p>
             )}
           </div>
-          <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+          <div className={`h-11 w-11 rounded-lg flex items-center justify-center shrink-0 ${iconBg}`}>
             <Icon className={`h-5 w-5 ${iconColor}`} />
           </div>
         </div>
@@ -232,177 +232,180 @@ export default function Dashboard() {
           subtitle="Operational snapshot of platform activity and pending approvals."
         />
 
-        {/* KPI Grid - All cards in a dense responsive grid */}
-        <section className="space-y-5">
-          {/* Member Details Row */}
+        {/* KPI Grid - Modern dashboard metrics */}
+        <section className="space-y-7">
+          {/* Member Details Section */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Member Overview
-              </h3>
-              <button className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 transition-colors">
-                View all <ArrowRight className="h-3 w-3" />
-              </button>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Member Overview</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Account status distribution</p>
+              </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
               <KpiCard 
                 label="Active" 
                 value={memberKpis.active} 
                 icon={Users} 
-                iconBg="bg-emerald-50" 
-                iconColor="text-emerald-600"
+                iconBg="bg-green-100" 
+                iconColor="text-green-700"
                 trend={{ value: 12, isUp: true }}
               />
               <KpiCard 
                 label="Expired" 
                 value={memberKpis.expired} 
                 icon={Clock} 
-                iconBg="bg-amber-50" 
-                iconColor="text-amber-600"
+                iconBg="bg-amber-100" 
+                iconColor="text-amber-700"
                 trend={{ value: 3, isUp: false }}
               />
               <KpiCard 
                 label="Suspended" 
                 value={memberKpis.suspended} 
                 icon={AlertTriangle} 
-                iconBg="bg-red-50" 
-                iconColor="text-red-600"
+                iconBg="bg-red-100" 
+                iconColor="text-red-700"
               />
               <KpiCard 
                 label="Blocked" 
                 value={memberKpis.blocked} 
                 icon={AlertCircle} 
-                iconBg="bg-slate-100" 
-                iconColor="text-slate-600"
+                iconBg="bg-slate-200" 
+                iconColor="text-slate-700"
               />
               <KpiCard 
                 label="Pending" 
                 value={memberKpis.pending} 
                 icon={Clock} 
-                iconBg="bg-blue-50" 
-                iconColor="text-blue-600"
+                iconBg="bg-blue-100" 
+                iconColor="text-blue-700"
                 subtitle="Awaiting approval"
               />
               <KpiCard 
                 label="Incomplete" 
                 value={memberKpis.incomplete} 
                 icon={FileText} 
-                iconBg="bg-purple-50" 
-                iconColor="text-purple-600"
+                iconBg="bg-purple-100" 
+                iconColor="text-purple-700"
               />
               <KpiCard 
                 label="Suspicious" 
                 value={memberKpis.suspicious} 
                 icon={AlertTriangle} 
-                iconBg="bg-orange-50" 
-                iconColor="text-orange-600"
+                iconBg="bg-orange-100" 
+                iconColor="text-orange-700"
               />
             </div>
           </div>
 
-          {/* Broadcast & Requests Row */}
+          {/* Broadcast & Activity Metrics */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Broadcast & Requests
-              </h3>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Broadcast & Requests</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Activity summary</p>
+              </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               <KpiCard 
                 label="Today's Posts" 
                 value={broadcastKpis.today} 
                 icon={MessageSquare} 
-                iconBg="bg-blue-50" 
-                iconColor="text-blue-600"
+                iconBg="bg-blue-100" 
+                iconColor="text-blue-700"
                 trend={{ value: 8, isUp: true }}
               />
               <KpiCard 
                 label="Total Posts" 
                 value={broadcastKpis.total} 
                 icon={MessageSquare} 
-                iconBg="bg-slate-100" 
-                iconColor="text-slate-600"
+                iconBg="bg-slate-200" 
+                iconColor="text-slate-700"
               />
               <KpiCard 
-                label="Pending Approval" 
+                label="Pending" 
                 value={sortedBroadcasts.length || broadcastKpis.pending} 
                 icon={Clock} 
-                iconBg="bg-amber-50" 
-                iconColor="text-amber-600"
+                iconBg="bg-warning/15" 
+                iconColor="text-warning"
                 subtitle="Needs review"
               />
               <KpiCard 
                 label="Call Requests" 
                 value={requestCallKpi} 
                 icon={PhoneCall} 
-                iconBg="bg-green-50" 
-                iconColor="text-green-600"
+                iconBg="bg-green-100" 
+                iconColor="text-green-700"
               />
               <KpiCard 
                 label="Reports" 
                 value={reportsKpi} 
                 icon={FileText} 
-                iconBg="bg-red-50" 
-                iconColor="text-red-600"
+                iconBg="bg-red-100" 
+                iconColor="text-red-700"
               />
             </div>
           </div>
         </section>
 
-        {/* Two-column layout for tables */}
+        {/* Two-column layout for main content */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-          {/* New Broadcast Approval Queue - Takes more space */}
-          <Card className="xl:col-span-8 border-slate-200/60 shadow-sm py-0 overflow-hidden">
-            <CardHeader className="border-b border-slate-100 bg-slate-50/30 px-5 py-4">
+          {/* Broadcast Approval Queue */}
+          <Card className="xl:col-span-8 border-border/40 bg-white/70 backdrop-blur-sm shadow-sm overflow-hidden">
+            <CardHeader className="border-b border-border/40 bg-secondary/20 px-6 py-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-base font-semibold text-slate-900">
-                    Broadcast Approval Queue
+                  <CardTitle className="text-lg font-semibold text-foreground">
+                    Approval Queue
                   </CardTitle>
-                  <CardDescription className="text-sm text-slate-500 mt-0.5">
-                    Review and approve pending broadcast requests
+                  <CardDescription className="text-sm text-muted-foreground mt-1">
+                    Pending broadcasts awaiting review
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
-                    {sortedBroadcasts.length} pending
+                  <span className={`inline-flex items-center px-3 py-1.5 rounded-md text-xs font-semibold ${
+                    sortedBroadcasts.length > 0 
+                      ? 'bg-warning/20 text-warning' 
+                      : 'bg-green-100/50 text-green-700'
+                  }`}>
+                    {sortedBroadcasts.length} {sortedBroadcasts.length === 1 ? 'item' : 'items'}
                   </span>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50/50 border-b border-slate-100">
-                    <tr className="text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                      <th className="px-5 py-3 w-12">#</th>
-                      <th className="px-5 py-3">Date & Time</th>
-                      <th className="px-5 py-3">Broadcaster</th>
-                      <th className="px-5 py-3">Company</th>
-                      <th className="px-5 py-3">Message</th>
-                      <th className="px-5 py-3">Type</th>
-                      <th className="px-5 py-3">Send To</th>
+                <table className="w-full">
+                  <thead className="bg-secondary/50 border-b border-border/40">
+                    <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      <th className="px-6 py-4 w-8">#</th>
+                      <th className="px-6 py-4">Date & Time</th>
+                      <th className="px-6 py-4">Broadcaster</th>
+                      <th className="px-6 py-4">Company</th>
+                      <th className="px-6 py-4">Message</th>
+                      <th className="px-6 py-4">Type</th>
+                      <th className="px-6 py-4">Recipient</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100/80">
+                  <tbody className="divide-y divide-border/30">
                     {broadsLoading ? (
                       <tr>
-                        <td colSpan={7} className="px-5 py-12 text-center">
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="h-8 w-8 border-2 border-slate-200 border-t-slate-600 rounded-full animate-spin" />
-                            <span className="text-sm text-slate-500">Loading broadcasts...</span>
+                        <td colSpan={7} className="px-6 py-16 text-center">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="h-8 w-8 border-2 border-border border-t-primary rounded-full animate-spin" />
+                            <span className="text-sm text-muted-foreground">Loading broadcasts...</span>
                           </div>
                         </td>
                       </tr>
                     ) : sortedBroadcasts.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-5 py-12 text-center">
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="h-12 w-12 rounded-full bg-emerald-50 flex items-center justify-center">
-                              <MessageSquare className="h-6 w-6 text-emerald-600" />
+                        <td colSpan={7} className="px-6 py-16 text-center">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="h-12 w-12 rounded-full bg-success/15 flex items-center justify-center">
+                              <MessageSquare className="h-6 w-6 text-success" />
                             </div>
-                            <span className="text-sm font-medium text-slate-700">All caught up!</span>
-                            <span className="text-xs text-slate-500">No pending broadcasts requiring approval.</span>
+                            <span className="text-sm font-semibold text-foreground">All caught up!</span>
+                            <span className="text-xs text-muted-foreground">No pending broadcasts to review</span>
                           </div>
                         </td>
                       </tr>
@@ -411,7 +414,7 @@ export default function Dashboard() {
                         const formatted = formatDateDisplay(b.at);
                         const displaySendTo =
                           b.sendingOption === 'SendToAll'
-                            ? 'All'
+                            ? 'All Members'
                             : b.sendingOption === 'SendToGroup'
                               ? 'Group'
                               : b.sendingOption;
@@ -420,51 +423,51 @@ export default function Dashboard() {
                           <tr
                             key={b.id}
                             onClick={() => openBroadcast(b)}
-                            className="hover:bg-blue-50/40 cursor-pointer transition-colors select-none group"
+                            className="hover:bg-primary/5 cursor-pointer transition-colors select-none group"
                           >
-                            <td className="px-5 py-3.5 text-slate-400 font-mono text-xs font-semibold">
+                            <td className="px-6 py-4 text-muted-foreground font-mono text-xs font-medium">
                               {String(i + 1).padStart(2, '0')}
                             </td>
-                            <td className="px-5 py-3.5">
-                              <div className="font-medium text-slate-900 text-[13px] whitespace-nowrap">
+                            <td className="px-6 py-4">
+                              <div className="font-medium text-foreground text-sm whitespace-nowrap">
                                 {formatted.date}
                               </div>
-                              <div className="text-[11px] text-slate-400 mt-0.5 whitespace-nowrap">
+                              <div className="text-xs text-muted-foreground mt-0.5 whitespace-nowrap">
                                 {formatted.time}
                               </div>
                             </td>
-                            <td className="px-5 py-3.5">
+                            <td className="px-6 py-4">
                               <div className="flex items-center gap-2.5">
-                                <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-semibold text-slate-700 shrink-0">
-                                  {b.sender.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
+                                  {b.sender.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                                 </div>
-                                <span className="text-slate-900 font-medium text-[13px] whitespace-nowrap">
+                                <span className="text-foreground font-medium text-sm whitespace-nowrap">
                                   {b.sender}
                                 </span>
                               </div>
                             </td>
-                            <td className="px-5 py-3.5 text-slate-600 text-[13px] whitespace-nowrap">
+                            <td className="px-6 py-4 text-foreground/70 text-sm whitespace-nowrap">
                               {b.companyName}
                             </td>
-                            <td className="px-5 py-3.5 max-w-[220px]">
+                            <td className="px-6 py-4 max-w-[240px]">
                               <span
-                                className="text-slate-600 text-[13px] line-clamp-2 leading-snug"
+                                className="text-foreground/70 text-sm line-clamp-2"
                                 title={b.text}
                               >
                                 {b.text}
                               </span>
                             </td>
-                            <td className="px-5 py-3.5">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-semibold uppercase tracking-[0.05em] ${
                                 b.type === 'WTB' 
-                                  ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                                  : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                  ? 'bg-blue-100/70 text-blue-700' 
+                                  : 'bg-green-100/70 text-green-700'
                               }`}>
                                 {b.type}
                               </span>
                             </td>
-                            <td className="px-5 py-3.5">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                            <td className="px-6 py-4">
+                              <span className="inline-flex items-center px-2 py-1 rounded text-[10px] font-medium bg-secondary text-foreground/70">
                                 {displaySendTo}
                               </span>
                             </td>
@@ -478,43 +481,43 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Most Category Broadcast - Compact side panel */}
-          <Card className="xl:col-span-4 border-slate-200/60 shadow-sm py-0 overflow-hidden">
-            <CardHeader className="border-b border-slate-100 bg-slate-50/30 px-5 py-4">
-              <CardTitle className="text-base font-semibold text-slate-900">
-                Top Categories
+          {/* Category Statistics */}
+          <Card className="xl:col-span-4 border-border/40 bg-white/70 backdrop-blur-sm shadow-sm overflow-hidden">
+            <CardHeader className="border-b border-border/40 bg-secondary/20 px-6 py-5">
+              <CardTitle className="text-lg font-semibold text-foreground">
+                Category Breakdown
               </CardTitle>
-              <CardDescription className="text-sm text-slate-500 mt-0.5">
-                Broadcast distribution by category
+              <CardDescription className="text-sm text-muted-foreground mt-1">
+                Broadcast distribution summary
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y divide-slate-100/80">
+              <div className="divide-y divide-border/30">
                 {categoryData.map((cat, index) => (
                   <div 
                     key={cat.name} 
-                    className="flex items-center justify-between px-5 py-3 hover:bg-slate-50/50 transition-colors"
+                    className="flex items-center justify-between px-6 py-4 hover:bg-secondary/30 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-semibold text-slate-400 w-5">
+                      <span className="text-xs font-semibold text-muted-foreground w-6 text-center">
                         {String(index + 1).padStart(2, '0')}
                       </span>
-                      <span className="text-[13px] font-medium text-slate-900">{cat.name}</span>
+                      <span className="text-sm font-medium text-foreground">{cat.name}</span>
                     </div>
-                    <div className="flex items-center gap-4 text-[13px]">
+                    <div className="flex items-center gap-5 text-sm">
                       <div className="flex flex-col items-end">
-                        <span className="font-semibold text-slate-900">{cat.total}</span>
-                        <span className="text-[10px] text-slate-400 uppercase tracking-wide">Total</span>
+                        <span className="font-semibold text-foreground">{cat.total}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Total</span>
                       </div>
                       <div className="flex flex-col items-end">
-                        <span className={`font-semibold ${cat.pending > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+                        <span className={`font-semibold ${cat.pending > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
                           {cat.pending}
                         </span>
-                        <span className="text-[10px] text-slate-400 uppercase tracking-wide">Pending</span>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Pending</span>
                       </div>
                       <div className="flex flex-col items-end">
-                        <span className="font-semibold text-emerald-600">{cat.approved}</span>
-                        <span className="text-[10px] text-slate-400 uppercase tracking-wide">Approved</span>
+                        <span className="font-semibold text-success">{cat.approved}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Approved</span>
                       </div>
                     </div>
                   </div>
